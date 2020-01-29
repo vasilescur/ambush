@@ -29,3 +29,4 @@ The lexer is responsible for turning source code ( : string) into tokens.
     - [ ] Tiger VS Code extension
     - [ ] Coloring formatting for (let, in, end)
  - [ ] Garbage collector
+ - [ ] Rich error reporting
