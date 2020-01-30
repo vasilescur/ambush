@@ -1,3 +1,11 @@
+(*******************************************************************************
+ * File:        driver.sml
+ * Authors:     (starter code)
+ * 
+ * Description: Provides a function to test the Tiger lexer on a source file. 
+ *              Prints generated tokens to STDOUT.
+ ******************************************************************************)
+
 structure Parse =
 struct
   fun parse filename =

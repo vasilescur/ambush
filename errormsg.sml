@@ -1,3 +1,11 @@
+(*******************************************************************************
+ * File:        errormsg.sml
+ * Authors:     (starter code)
+ * 
+ * Description: Provides support for error reporting with information about
+ *              the context of the error that occurred.
+ ******************************************************************************)
+
 signature ERRORMSG =
 sig
   val anyErrors : bool ref

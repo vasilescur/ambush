@@ -1,2 +1,0 @@
-# Standard ML Style Guide
-
