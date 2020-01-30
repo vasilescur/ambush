@@ -6,7 +6,7 @@
   Compiler for Tiger programming language<br/>written in Standard ML for Duke <i>ECE/CS 553: Compiler Construction</i>.
 </p>
 
-## Group Members
+### Group Members
 
 - Jake Derry
 - Ryan Piersma
