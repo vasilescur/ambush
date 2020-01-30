@@ -34,7 +34,7 @@ Parse.parse "myFile.tig";
 
 ## Lexer
 
-The lexer is responsible for turning source code (:string) into tokens. 
+The lexer is responsible for turning source code into tokens. 
 
 ### Comments
 
