@@ -1,7 +1,10 @@
-<div style="text-align:center"><img width="300" align="center" alt="logo-large" src="https://user-images.githubusercontent.com/10100323/73473240-6a6f0600-435a-11ea-95f7-57841d91c49e.png"></div>
+<p align="center">
+  <img width="300" align="center" alt="logo-large" src="https://user-images.githubusercontent.com/10100323/73473240-6a6f0600-435a-11ea-95f7-57841d91c49e.png">
+</p>
 
-Tiger compiler written in Standard ML.
-
+<p align="center">
+  Compiler for Tiger programming language<br/>written in Standard ML for Duke *ECE/CS 553: Compiler Construction*.
+</p>
 
 ## Group Members
 
