@@ -1,4 +1,4 @@
-# Ambush
+<img width="300" align="center" alt="logo-large" src="https://user-images.githubusercontent.com/10100323/73473240-6a6f0600-435a-11ea-95f7-57841d91c49e.png">
 
 Tiger compiler written in Standard ML.
 
