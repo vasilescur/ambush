@@ -1,9 +1,12 @@
-# Ambush
+<p align="center">
+  <img width="300" align="center" alt="logo-large" src="https://user-images.githubusercontent.com/10100323/73473240-6a6f0600-435a-11ea-95f7-57841d91c49e.png">
+</p>
 
-Tiger compiler written in Standard ML.
+<p align="center">
+  Compiler for Tiger programming language<br/>written in Standard ML for Duke <i>ECE/CS 553: Compiler Construction</i>.
+</p>
 
-
-## Group Members
+### Group Members
 
 - Jake Derry
 - Ryan Piersma
@@ -34,7 +37,7 @@ Parse.parse "myFile.tig";
 
 ## Lexer
 
-The lexer is responsible for turning source code (:string) into tokens. 
+The lexer is responsible for turning source code into tokens. 
 
 ### Comments
 
