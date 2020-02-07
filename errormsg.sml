@@ -1,7 +1,7 @@
 (*******************************************************************************
  * File:        errormsg.sml
  * Authors:     (starter code)
- * 
+ *
  * Description: Provides support for error reporting with information about
  *              the context of the error that occurred.
  ******************************************************************************)
@@ -48,7 +48,7 @@ struct
               else
                 look (rest, n - 1)
           | look _ = print "0.0"
-          
+
     in  anyErrors := true;
 
         print (!fileName);
@@ -66,4 +66,3 @@ struct
      raise Error)
 
 end  (* structure ErrorMsg *)
-

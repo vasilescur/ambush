@@ -3,18 +3,28 @@ state 0:
 
 	program : . exp 
 
-	INT	shift 2
+	INT	shift 4
+	STRING	shift 3
+	NIL	shift 2
 
 	exp	goto 1
-	program	goto 3
+	program	goto 13
 
 	.	error
 
 
 state 1:
 
+	exp : exp . PLUS exp 
+	exp : exp . MINUS exp 
+	exp : exp . DIVIDE exp 
+	exp : exp . TIMES exp 
 	program : exp .  (reduce by rule 0)
 
+	PLUS	shift 8
+	MINUS	shift 7
+	TIMES	shift 6
+	DIVIDE	shift 5
 
 
 	.	reduce by rule 0
@@ -22,7 +32,7 @@ state 1:
 
 state 2:
 
-	exp : INT .  (reduce by rule 1)
+	exp : NIL .  (reduce by rule 1)
 
 
 
@@ -31,11 +41,137 @@ state 2:
 
 state 3:
 
+	exp : STRING .  (reduce by rule 3)
+
+
+
+	.	reduce by rule 3
+
+
+state 4:
+
+	exp : INT .  (reduce by rule 2)
+
+
+
+	.	reduce by rule 2
+
+
+state 5:
+
+	exp : exp DIVIDE . exp 
+
+	INT	shift 4
+	STRING	shift 3
+	NIL	shift 2
+
+	exp	goto 9
+
+	.	error
+
+
+state 6:
+
+	exp : exp TIMES . exp 
+
+	INT	shift 4
+	STRING	shift 3
+	NIL	shift 2
+
+	exp	goto 10
+
+	.	error
+
+
+state 7:
+
+	exp : exp MINUS . exp 
+
+	INT	shift 4
+	STRING	shift 3
+	NIL	shift 2
+
+	exp	goto 11
+
+	.	error
+
+
+state 8:
+
+	exp : exp PLUS . exp 
+
+	INT	shift 4
+	STRING	shift 3
+	NIL	shift 2
+
+	exp	goto 12
+
+	.	error
+
+
+state 9:
+
+	exp : exp . PLUS exp 
+	exp : exp . MINUS exp 
+	exp : exp . DIVIDE exp 
+	exp : exp DIVIDE exp .  (reduce by rule 6)
+	exp : exp . TIMES exp 
+
+
+
+	.	reduce by rule 6
+
+
+state 10:
+
+	exp : exp . PLUS exp 
+	exp : exp . MINUS exp 
+	exp : exp . DIVIDE exp 
+	exp : exp . TIMES exp 
+	exp : exp TIMES exp .  (reduce by rule 7)
+
+
+
+	.	reduce by rule 7
+
+
+state 11:
+
+	exp : exp . PLUS exp 
+	exp : exp . MINUS exp 
+	exp : exp MINUS exp .  (reduce by rule 5)
+	exp : exp . DIVIDE exp 
+	exp : exp . TIMES exp 
+
+	TIMES	shift 6
+	DIVIDE	shift 5
+
+
+	.	reduce by rule 5
+
+
+state 12:
+
+	exp : exp . PLUS exp 
+	exp : exp PLUS exp .  (reduce by rule 4)
+	exp : exp . MINUS exp 
+	exp : exp . DIVIDE exp 
+	exp : exp . TIMES exp 
+
+	TIMES	shift 6
+	DIVIDE	shift 5
+
+
+	.	reduce by rule 4
+
+
+state 13:
+
 
 	EOF	accept
 
 
 	.	error
 
-2 of 6 action table entries left after compaction
-2 goto table entries
+12 of 38 action table entries left after compaction
+6 goto table entries

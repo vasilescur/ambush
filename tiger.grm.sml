@@ -8,12 +8,18 @@ structure ParserData=
 struct
 structure Header = 
 struct
+(*Ignore the above definition, it is just there to fix syntax highlighting :P *)
+
+
+
 (*******************************************************************************
  * File:        tiger.grm
  * Authors:     Jake Derry, Radu Vasilescu, Ryan Piersma
- * 
- * Description: Grammar definition file for ML-Yacc
+ *
+ * Description: Grammar definition file for ML-Yacc.
+ *              Tiger Reference: https://www.lrde.epita.fr/~tiger/tiger.html
  ******************************************************************************)
+
 
 
 end
@@ -23,21 +29,40 @@ local open LrTable in
 val table=let val actionRows =
 "\
 \\001\000\001\000\000\000\000\000\
-\\001\000\003\000\004\000\000\000\
-\\006\000\000\000\
-\\007\000\000\000\
+\\001\000\003\000\006\000\004\000\005\000\041\000\004\000\000\000\
+\\016\000\015\000\010\000\016\000\009\000\017\000\008\000\018\000\007\000\000\000\
+\\017\000\000\000\
+\\018\000\000\000\
+\\019\000\000\000\
+\\020\000\017\000\008\000\018\000\007\000\000\000\
+\\021\000\017\000\008\000\018\000\007\000\000\000\
+\\022\000\000\000\
+\\023\000\000\000\
 \"
 val actionRowNumbers =
-"\001\000\002\000\003\000\000\000"
+"\001\000\002\000\003\000\005\000\
+\\004\000\001\000\001\000\001\000\
+\\001\000\008\000\009\000\007\000\
+\\006\000\000\000"
 val gotoT =
 "\
-\\001\000\001\000\002\000\003\000\000\000\
+\\001\000\001\000\002\000\013\000\000\000\
+\\000\000\
+\\000\000\
+\\000\000\
+\\000\000\
+\\001\000\009\000\000\000\
+\\001\000\010\000\000\000\
+\\001\000\011\000\000\000\
+\\001\000\012\000\000\000\
+\\000\000\
+\\000\000\
 \\000\000\
 \\000\000\
 \\000\000\
 \"
-val numstates = 4
-val numrules = 2
+val numstates = 14
+val numrules = 8
 val s = ref "" and index = ref 0
 val string_to_int = fn () => 
 let val i = !index
@@ -205,12 +230,55 @@ exp1 = exp1 ()
 end; ()))
  in ( LrTable.NT 1, ( result, exp1left, exp1right), rest671)
 end
-|  ( 1, ( ( _, ( MlyValue.INT INT1, INT1left, INT1right)) :: rest671))
+|  ( 1, ( ( _, ( _, NIL1left, NIL1right)) :: rest671)) => let val  
+result = MlyValue.ntVOID (fn _ => ())
+ in ( LrTable.NT 0, ( result, NIL1left, NIL1right), rest671)
+end
+|  ( 2, ( ( _, ( MlyValue.INT INT1, INT1left, INT1right)) :: rest671))
  => let val  result = MlyValue.ntVOID (fn _ => ( let val  INT1 = INT1
  ()
- in (1)
+ in ()
 end; ()))
  in ( LrTable.NT 0, ( result, INT1left, INT1right), rest671)
+end
+|  ( 3, ( ( _, ( MlyValue.STRING STRING1, STRING1left, STRING1right))
+ :: rest671)) => let val  result = MlyValue.ntVOID (fn _ => ( let val 
+ STRING1 = STRING1 ()
+ in ()
+end; ()))
+ in ( LrTable.NT 0, ( result, STRING1left, STRING1right), rest671)
+end
+|  ( 4, ( ( _, ( MlyValue.ntVOID exp2, _, exp2right)) :: _ :: ( _, ( 
+MlyValue.ntVOID exp1, exp1left, _)) :: rest671)) => let val  result = 
+MlyValue.ntVOID (fn _ => ( let val  exp1 = exp1 ()
+ val  exp2 = exp2 ()
+ in ()
+end; ()))
+ in ( LrTable.NT 0, ( result, exp1left, exp2right), rest671)
+end
+|  ( 5, ( ( _, ( MlyValue.ntVOID exp2, _, exp2right)) :: _ :: ( _, ( 
+MlyValue.ntVOID exp1, exp1left, _)) :: rest671)) => let val  result = 
+MlyValue.ntVOID (fn _ => ( let val  exp1 = exp1 ()
+ val  exp2 = exp2 ()
+ in ()
+end; ()))
+ in ( LrTable.NT 0, ( result, exp1left, exp2right), rest671)
+end
+|  ( 6, ( ( _, ( MlyValue.ntVOID exp2, _, exp2right)) :: _ :: ( _, ( 
+MlyValue.ntVOID exp1, exp1left, _)) :: rest671)) => let val  result = 
+MlyValue.ntVOID (fn _ => ( let val  exp1 = exp1 ()
+ val  exp2 = exp2 ()
+ in ()
+end; ()))
+ in ( LrTable.NT 0, ( result, exp1left, exp2right), rest671)
+end
+|  ( 7, ( ( _, ( MlyValue.ntVOID exp2, _, exp2right)) :: _ :: ( _, ( 
+MlyValue.ntVOID exp1, exp1left, _)) :: rest671)) => let val  result = 
+MlyValue.ntVOID (fn _ => ( let val  exp1 = exp1 ()
+ val  exp2 = exp2 ()
+ in ()
+end; ()))
+ in ( LrTable.NT 0, ( result, exp1left, exp2right), rest671)
 end
 | _ => raise (mlyAction i392)
 end

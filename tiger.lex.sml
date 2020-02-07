@@ -111,7 +111,7 @@ REM | ESCAPE | STRING | COMMENT | INITIAL
 
 (* ===== Shortcuts ===== *)
 
-(* type pos = int *)
+type pos = int
 (* type lexresult = Tokens.token *)
 
 (* Shortcut function to calculate the start and end positions of a token *)

@@ -1,35 +1,58 @@
+fun a x = 3;
+
+(*Ignore the above definition, it is just there to fix syntax highlighting :P *)
+
+
+
 (*******************************************************************************
  * File:        tiger.grm
  * Authors:     Jake Derry, Radu Vasilescu, Ryan Piersma
- * 
- * Description: Grammar definition file for ML-Yacc
+ *
+ * Description: Grammar definition file for ML-Yacc.
+ *              Tiger Reference: https://www.lrde.epita.fr/~tiger/tiger.html
  ******************************************************************************)
 
+
 %%
-%term
-    EOF 
+%term EOF
   | ID of string
-  | INT of int | STRING of string 
-  | COMMA | COLON | SEMICOLON | LPAREN | RPAREN | LBRACK | RBRACK 
-  | LBRACE | RBRACE | DOT 
+  | INT of int | STRING of string
+  | COMMA | COLON | SEMICOLON | LPAREN | RPAREN | LBRACK | RBRACK
+  | LBRACE | RBRACE | DOT
   | PLUS | MINUS | TIMES | DIVIDE | EQ | NEQ | LT | LE | GT | GE
   | AND | OR | ASSIGN
-  | ARRAY | IF | THEN | ELSE | WHILE | FOR | TO | DO | LET | IN | END | OF 
+  | ARRAY | IF | THEN | ELSE | WHILE | FOR | TO | DO | LET | IN | END | OF
   | BREAK | NIL
-  | FUNCTION | VAR | TYPE 
+  | FUNCTION | VAR | TYPE
 
-%nonterm  exp | program
+%nonterm  exp | program 
+    | lval | decs | tydec | vardec | fundec | ty | tyfields | tyfields_tail
+    | exp_seq | exp_seq_tail | arguments | arguments_tail | lval 
+    | record | record_tail
+
+%left PLUS MINUS
+%left TIMES DIVIDE
+%left EQ NEQ LT LE GT GE
+%left AND OR
+
+%left PLUS MINUS
+%left TIMES DIVIDE
+
+(* How do we deal with negative signs? *)
 
 %pos int
+
 %verbose
+
 %start program
+
 %eop EOF
 %noshift EOF
 
 %name Tiger
 
-%keyword WHILE FOR TO BREAK LET IN END FUNCTION VAR TYPE ARRAY IF THEN ELSE 
-	DO OF NIL
+%keyword WHILE FOR TO BREAK LET IN END FUNCTION VAR TYPE ARRAY IF THEN ELSE
+  DO OF NIL
 
 %prefer THEN ELSE LPAREN
 
@@ -37,10 +60,128 @@
 %value INT (1)
 %value STRING ("")
 
-%%
+%% 
 
-program	: exp				()
+(* A Tiger program is just an expression *)
+program: exp                          ()
 
-	
-exp: INT    (1)
+(* Multiple declarations *)
+decs:   
+      (* empty *)                     ()
+  |   tydec decs                      ()
+  |   vardec decs                     ()
+  |   fundec decs                     ()
 
+
+(* Type declarations *)
+tydec: 
+      TYPE ID EQ ty                   ()    (* type type-id = ty *)
+
+(* Types *)
+ty:   
+      ID                              ()
+  |   LBRACE tyfields RBRACE          ()
+  |   ARRAY OF ID                     ()    (* array of type-id *)
+
+
+(* NOTE:
+    As seen in `tyfields` and `tyfields_tail` below, the system we use to deal
+    with lists of potentially more than one element is recursive and resembles
+    the regular expresssion a{,a}*
+ *)
+
+(* Type fields *)
+tyfields: 
+      (* empty *)                     () 
+  |   ID COLON ID tyfields_tail       ()
+
+(* Any of the tail of a list of type fields *)
+tyfields_tail: 
+      (* empty *)                     ()
+  |   COMMA ID COLON ID tyfields_tail ()
+
+
+(* Variable declarations *)
+vardec: 
+      VAR ID ASSIGN exp               ()
+  |   VAR ID COLON ID ASSIGN exp      ()
+
+(* Function declarations *)
+fundec: 
+    FUNCTION ID LPAREN tyfields RPAREN EQ exp           ()
+  | FUNCTION ID LPAREN tyfields RPAREN COLON ID EQ exp  ()
+
+(* L-Values are locations that can be read/assigned *)
+lval:
+    ID                                              ()
+  | lval DOT ID                                     ()
+  | lval LBRACK exp RBRACK                          ()
+
+
+(* Record creation *)
+record:
+      (* Empty *)                 ()
+  |   ID EQ exp record_tail       ()
+
+record_tail:
+      (* Empty *)                 ()
+  |   COMMA ID EQ exp record_tail ()
+
+
+arguments:
+      (* empty *)         ()
+  |   exp arguments_tail  ()
+
+arguments_tail:
+      (* empty *)               ()
+  |   COMMA exp arguments_tail  ()
+
+
+(* Expressions *)
+exp:
+  (* Literals *)
+      NIL                 ()
+  |   INT                 ()
+  |   STRING              ()
+
+  (* Math operations *)
+  |   exp PLUS exp        ()
+  |   exp MINUS exp       ()
+  |   exp DIVIDE exp      ()
+  |   exp TIMES exp       ()
+  |   LPAREN exp RPAREN   ()
+
+  (* Record creation *)
+  |   ID LBRACE record RBRACE       ()
+
+  (* Array creation *)
+  |   ID LBRACK exp RBRACK OF exp   ()
+
+
+  (* Assignment to l-value *)
+  |   lval ASSIGN exp     ()
+  
+
+  (* Control flow statements *)
+  |   IF exp THEN exp ELSE exp  ()
+  |   IF exp THEN exp   %prec 
+
+
+(*  |   exp EQ exp        ()
+  |   exp NEQ exp         ()
+  |   exp LE exp          ()
+  |   exp GE exp          ()
+  |   exp LT exp          ()
+  |   exp GT exp          ()
+  |   LPAREN exp RPAREN   () *)
+
+
+(* Allow dealing with sequences of expressions, such as in the first body
+   of a let statement-- separated by semicolons. *)
+exp_seq:
+      (* empty *)         ()
+  |   exp exp_seq_tail    ()
+  
+exp_seq_tail:
+      (* empty *)                 ()
+  |   SEMICOLON exp exp_seq_tail  ()
