@@ -111,8 +111,8 @@ REM | ESCAPE | STRING | COMMENT | INITIAL
 
 (* ===== Shortcuts ===== *)
 
-(* type pos = int *)
-(* type lexresult = Tokens.token *)
+type pos = int
+type lexresult = Tokens.token
 
 (* Shortcut function to calculate the start and end positions of a token *)
 fun s_e pos text = (pos, pos + String.size text)
@@ -159,6 +159,7 @@ fun eof () =
 
 
 (* Added from textbook page 82: *)
+
 type svalue = Tokens.svalue
 type pos = int
 type ('a, 'b) token = ('a, 'b) Tokens.token

@@ -1,0 +1,14 @@
+(* ----- sources.cm as of the end of building the Lexer: ------ *)
+
+(* Group is
+
+  $/basis.cm        (* Load the basis library.              *)
+  $/smlnj-lib.cm    (* Load the standard library.           *)
+  $/regexp-lib.cm   (* Load the regexp library.             *)
+
+  (* Load all user-created and lex files. *)
+  driver.sml        
+  errormsg.sml
+  tokens.sig
+  tokens.sml
+  tiger.lex *)

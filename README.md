@@ -35,6 +35,34 @@ a relative path to the Tiger input source file:
 Parse.parse "myFile.tig";
 ```
 
+### Project Structure and Files
+
+#### General
+
+- `errormsg.sml` provides a signature for creating helpful error messages
+- `sml-style-guide.pdf` outlines a style convention for writing SML code
+- `sources.cm` is the "Makefile" for the Compilation Manager
+- The `testcases/` folder contains several Tiger example programs
+- The `.cm/` folder contains Compilation Manager auto-generated files
+- `.gitignore` is used by Git to exclude files
+
+#### Lexer
+
+- `tiger.lex` is our ML-Lex definition file for Tiger
+- `tiger.lex.sml.ours` is the auto-generated lexer from our own `tiger.lex`
+- `tiger.lex.sml` is the auto-generated lexer from the TEXTBOOK author
+- `tokens.sig` and `tokens.sml` are the starter code files for tokens and 
+  signatures. **They are unused** currently, in favor of the auto-generated
+  tokens and signatures created by ML-Yacc.
+
+#### Parser
+
+- `tiger.grm` is our ML-Yacc grammar definition for Tiger
+- `tiger.grm.desc` is an auto-generated file from ML-Yacc
+- `tiger.grm.sig` contains auto-generated code from ML-Yacc
+- `tiger.grm.sml` contains the auto-generated parser by ML-Yacc
+
+
 ## Lexer
 
 The lexer is responsible for turning source code into tokens. 

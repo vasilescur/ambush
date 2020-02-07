@@ -8,7 +8,7 @@
 (* ===== Shortcuts ===== *)
 
 type pos = int
-type lexresult = Tokens.token
+(* type lexresult = Tokens.token *)
 
 (* Shortcut function to calculate the start and end positions of a token *)
 fun s_e pos text = (pos, pos + String.size text)
@@ -53,6 +53,15 @@ fun eof () =
 
 
 
+
+(* Added from textbook page 82: *)
+type svalue = Tokens.svalue
+type pos = int
+type ('a, 'b) token = ('a, 'b) Tokens.token
+type lexresult = (svalue, pos) token
+
+
+
 (* If you're wondering why there's an unused "REM" state, 
    it's so we can use comments in the lexer definitions below
    the [double %]... It's a dirty hack but  *shrug*  *)
@@ -61,6 +70,8 @@ fun eof () =
 %s REM STRING ESCAPE COMMENT;
 
 letter = [a-zA-Z];
+
+%header (functor TigerLexFun (structure Tokens: Tiger_TOKENS));
 
 %%
 

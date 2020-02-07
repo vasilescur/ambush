@@ -1,13 +1,12 @@
 Group is
 
-  $/basis.cm        (* Load the basis library.              *)
-  $/smlnj-lib.cm    (* Load the standard library.           *)
-  $/regexp-lib.cm   (* Load the regexp library.             *)
-
-  (* Load all user-created and lex files. *)
-  driver.sml        
-  errormsg.sml
-  tokens.sig
-  tokens.sml
-  tiger.lex
+  (* Libraries *)
+  $/basis.cm
+  $/smlnj-lib.cm
+  $/ml-yacc-lib.cm
   
+  (* Our source files *)
+  tiger.lex
+  errormsg.sml
+  parsetest.sml
+  tiger.grm
