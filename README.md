@@ -162,6 +162,11 @@ fun eof () =
  - [ ] Optimized compiliation for different processors
  - [ ] Tiger web framework (integration)? See [`SML on Stilts`](https://github.com/j4cbo/stilts)...
 
-## For Your Consideration and Enjoyment
+<br/> <br/>
+
+## Dank Memes For Your Consideration and Enjoyment
 
 ![Binary tree pants meme](https://i.kym-cdn.com/photos/images/original/001/272/773/6dd.jpg)
+
+![Functional programming meme](https://pics.me.me/do-you-smoke-functional-very-time-programming-1s-more-effective-36314444.png)
+
