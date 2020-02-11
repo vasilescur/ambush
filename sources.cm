@@ -8,5 +8,11 @@ Group is
   (* Our source files *)
   tiger.lex
   errormsg.sml
-  parsetest.sml
+  (* parsetest.sml *)
   tiger.grm
+  absyn.sml
+
+  table.sig
+  table.sml
+  symbol.sml
+  parse.sml

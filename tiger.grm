@@ -1,8 +1,8 @@
+structure A = Absyn
+
 fun a x = 3;
 
 (*Ignore the above definition, it is just there to fix syntax highlighting :P *)
-
-
 
 (*******************************************************************************
  * File:        tiger.grm
@@ -19,7 +19,7 @@ fun a x = 3;
   | INT of int | STRING of string
   | COMMA | COLON | SEMICOLON | LPAREN | RPAREN | LBRACK | RBRACK
   | LBRACE | RBRACE | DOT
-  | PLUS | MINUS | TIMES | DIVIDE | EQ | NEQ | LT | LE | GT | GE
+  | PLUS | MINUS | UMINUS | TIMES | DIVIDE | EQ | NEQ | LT | LE | GT | GE
   | AND | OR | ASSIGN
   | ARRAY | IF | THEN | ELSE | WHILE | FOR | TO | DO | LET | IN | END | OF
   | BREAK | NIL
@@ -27,16 +27,24 @@ fun a x = 3;
 
 %nonterm  exp | program 
     | lval | decs | tydec | vardec | fundec | ty | tyfields | tyfields_tail
-    | exp_seq | exp_seq_tail | arguments | arguments_tail | lval 
+    | exp_seq | exp_seq_tail | arguments | arguments_tail  
     | record | record_tail
 
-%left PLUS MINUS
-%left TIMES DIVIDE
-%left EQ NEQ LT LE GT GE
+
+%right OF
+
+%nonassoc DO
+%nonassoc ELSE
+%nonassoc ASSIGN
+
 %left AND OR
+
+%nonassoc EQ NEQ LT LE GT GE
 
 %left PLUS MINUS
 %left TIMES DIVIDE
+
+%left UMINUS
 
 (* How do we deal with negative signs? *)
 
@@ -73,17 +81,6 @@ decs:
   |   fundec decs                     ()
 
 
-(* Type declarations *)
-tydec: 
-      TYPE ID EQ ty                   ()    (* type type-id = ty *)
-
-(* Types *)
-ty:   
-      ID                              ()
-  |   LBRACE tyfields RBRACE          ()
-  |   ARRAY OF ID                     ()    (* array of type-id *)
-
-
 (* NOTE:
     As seen in `tyfields` and `tyfields_tail` below, the system we use to deal
     with lists of potentially more than one element is recursive and resembles
@@ -112,11 +109,29 @@ fundec:
   | FUNCTION ID LPAREN tyfields RPAREN COLON ID EQ exp  ()
 
 (* L-Values are locations that can be read/assigned *)
-lval:
-    ID                                              ()
-  | lval DOT ID                                     ()
-  | lval LBRACK exp RBRACK                          ()
+lval: 
+      ID                          ()
+  |   lval DOT ID                 ()
+  |   lval LBRACK exp RBRACK      ()
 
+(* Arguments *)
+arguments:
+      (* empty *)         ()
+  |   exp arguments_tail  ()
+
+arguments_tail:
+      (* empty *)               ()
+  |   COMMA exp arguments_tail  ()
+
+(* Type declarations *)
+tydec: 
+      TYPE ID EQ ty                   ()    (* type type-id = ty *)
+
+(* Types *)
+ty:   
+      ID                              ()
+  |   LBRACE tyfields RBRACE          ()
+  |   ARRAY OF ID                     ()    (* array of type-id *)
 
 (* Record creation *)
 record:
@@ -128,15 +143,6 @@ record_tail:
   |   COMMA ID EQ exp record_tail ()
 
 
-arguments:
-      (* empty *)         ()
-  |   exp arguments_tail  ()
-
-arguments_tail:
-      (* empty *)               ()
-  |   COMMA exp arguments_tail  ()
-
-
 (* Expressions *)
 exp:
   (* Literals *)
@@ -144,12 +150,20 @@ exp:
   |   INT                 ()
   |   STRING              ()
 
+  (* Negative expressions vs minus *)
+  |   MINUS exp   %prec UMINUS  ()  
+
   (* Math operations *)
-  |   exp PLUS exp        ()
-  |   exp MINUS exp       ()
-  |   exp DIVIDE exp      ()
-  |   exp TIMES exp       ()
-  |   LPAREN exp RPAREN   ()
+  |   exp PLUS exp        (A.OpExp({left=exp1, oper=A.PlusOp, right=exp2, pos=exp1left}))
+  |   exp MINUS exp       (A.OpExp({left=exp1, oper=A.MinusOp, right=exp2, pos=exp1left}))
+  |   exp DIVIDE exp      (A.OpExp({left=exp1, oper=A.DivOp, right=exp2, pos=exp1left}))
+  |   exp TIMES exp       (A.OpExp({left=exp1, oper=A.TimesOp, right=exp2, pos=exp1left}))
+
+  (* Function calls *)
+  |   ID LPAREN arguments RPAREN         ()
+
+  (* Expressions in (nested?) parens *)
+  |   LPAREN exp RPAREN             ()
 
   (* Record creation *)
   |   ID LBRACE record RBRACE       ()
@@ -157,23 +171,34 @@ exp:
   (* Array creation *)
   |   ID LBRACK exp RBRACK OF exp   ()
 
-
   (* Assignment to l-value *)
-  |   lval ASSIGN exp     ()
+  |   lval ASSIGN exp               ()
   
-
   (* Control flow statements *)
-  |   IF exp THEN exp ELSE exp  ()
-  |   IF exp THEN exp   %prec 
+  |   IF exp THEN exp ELSE exp      ()
+  |   IF exp THEN exp   %prec DO    ()
 
+  (* Loops *)
+  |   WHILE exp DO exp ()
+  |   FOR ID ASSIGN exp TO exp DO exp ()
 
-(*  |   exp EQ exp        ()
+  |   BREAK ()
+
+  (* Let statements *)
+  |   LET decs IN exp_seq END ()
+
+  (* Boolean operators *)
+  |   exp AND exp ()
+  |   exp OR exp ()
+
+  (* Equality checking operators *)
+  |   exp EQ exp          ()
   |   exp NEQ exp         ()
   |   exp LE exp          ()
   |   exp GE exp          ()
   |   exp LT exp          ()
   |   exp GT exp          ()
-  |   LPAREN exp RPAREN   () *)
+  |   LPAREN exp RPAREN   () 
 
 
 (* Allow dealing with sequences of expressions, such as in the first body
