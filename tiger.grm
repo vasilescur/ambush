@@ -25,10 +25,23 @@ fun a x = 3;
   | BREAK | NIL
   | FUNCTION | VAR | TYPE
 
-%nonterm  exp | program 
-    | lval | decs | tydec | vardec | fundec | ty | tyfields | tyfields_tail
-    | exp_seq | exp_seq_tail | arguments | arguments_tail  
-    | record | record_tail
+%nonterm 
+      program of A.exp
+    | exp of A.exp
+    | lval of A.var
+    | decs of A.dec list
+    | tydec of A.dec list
+    | vardec of A.dec
+    | fundec of A.dec list
+    | ty of A.ty
+    | tyfields of A.field list
+    | tyfields_tail of A.field list
+    | exp_seq of A.exp list
+    | exp_seq_tail of A.exp list
+    | arguments of A.exp list
+    | arguments_tail of A.exp list
+    | record of (A.symbol * A.exp * pos) list
+    | record_tail of (A.symbol * A.exp * pos) list
 
 
 %right OF
@@ -71,14 +84,14 @@ fun a x = 3;
 %% 
 
 (* A Tiger program is just an expression *)
-program: exp                          ()
+program: exp                          (exp)
 
 (* Multiple declarations *)
 decs:   
-      (* empty *)                     ()
-  |   tydec decs                      ()
-  |   vardec decs                     ()
-  |   fundec decs                     ()
+      (* empty *)                     ([])
+  |   tydec decs                      (A.TypeDec()) (* Fill this *)
+  |   vardec decs                     (A.VarDec())   (* Fill this *)
+  |   fundec decs                     (A.FunctionDec()) (* Fill this *)
 
 
 (* NOTE:
@@ -89,43 +102,43 @@ decs:
 
 (* Type fields *)
 tyfields: 
-      (* empty *)                     () 
+      (* empty *)                     ([]) 
   |   ID COLON ID tyfields_tail       ()
 
 (* Any of the tail of a list of type fields *)
 tyfields_tail: 
-      (* empty *)                     ()
+      (* empty *)                     ([])
   |   COMMA ID COLON ID tyfields_tail ()
 
 
 (* Variable declarations *)
 vardec: 
-      VAR ID ASSIGN exp               ()
-  |   VAR ID COLON ID ASSIGN exp      ()
+      VAR ID ASSIGN exp               (A.Vardec({name = Symbol.symbol ID, escape = (ref true), typ = Symbol.symbol ID2, pos = id1left}))
+  |   VAR ID COLON ID ASSIGN exp      (A.VarDec({name = Symbol.symbol ID1, escape = (ref true), typ = SOME (Symbol.symbol ID2, ID2left), init = exp, pos = VARleft}))
 
 (* Function declarations *)
 fundec: 
-    FUNCTION ID LPAREN tyfields RPAREN EQ exp           ()
-  | FUNCTION ID LPAREN tyfields RPAREN COLON ID EQ exp  ()
+    FUNCTION ID LPAREN tyfields RPAREN EQ exp           (A.FunctionDec())
+  | FUNCTION ID LPAREN tyfields RPAREN COLON ID EQ exp  (A.FunctionDec())
 
 (* L-Values are locations that can be read/assigned *)
 lval: 
-      ID                          ()
-  |   lval DOT ID                 ()
-  |   lval LBRACK exp RBRACK      ()
+      ID                          (A.SimpleVar(Symbol.symbol ID, IDleft))
+  |   lval DOT ID                 (A.FieldVar(lvalue, Symbol.symbol ID, lvalleft))
+  |   lval LBRACK exp RBRACK      (A.SubscriptVar(lval, exp, lvalleft))
 
 (* Arguments *)
 arguments:
-      (* empty *)         ()
-  |   exp arguments_tail  ()
+      (* empty *)         ([])
+  |   exp arguments_tail  (exp::arguments_tail)
 
 arguments_tail:
-      (* empty *)               ()
-  |   COMMA exp arguments_tail  ()
+      (* empty *)               ([])
+  |   COMMA exp arguments_tail  (exp::arguments_tail)
 
 (* Type declarations *)
 tydec: 
-      TYPE ID EQ ty                   ()    (* type type-id = ty *)
+      TYPE ID EQ ty                   (A.TypeDec([{name=Symbol.symbol ID, ty=ty, pos=TYPEleft}])::[])    (* type type-id = ty *)
 
 (* Types *)
 ty:   
@@ -146,67 +159,69 @@ record_tail:
 (* Expressions *)
 exp:
   (* Literals *)
-      NIL                 ()
-  |   INT                 ()
-  |   STRING              ()
+      NIL                 (A.NilExp)
+  |   INT                 (A.IntExp(INT))
+  |   STRING              (A.StringExp(STRING, STRINGleft))
 
   (* Negative expressions vs minus *)
-  |   MINUS exp   %prec UMINUS  ()  
+  |   MINUS exp   %prec UMINUS  (A.OpExp({left=A.IntExp(0), oper=A.MinusOp, right=exp, pos=MINUSleft}))  
 
   (* Math operations *)
   |   exp PLUS exp        (A.OpExp({left=exp1, oper=A.PlusOp, right=exp2, pos=exp1left}))
   |   exp MINUS exp       (A.OpExp({left=exp1, oper=A.MinusOp, right=exp2, pos=exp1left}))
-  |   exp DIVIDE exp      (A.OpExp({left=exp1, oper=A.DivOp, right=exp2, pos=exp1left}))
+  |   exp DIVIDE exp      (A.OpExp({left=exp1, oper=A.DivideOp, right=exp2, pos=exp1left}))
   |   exp TIMES exp       (A.OpExp({left=exp1, oper=A.TimesOp, right=exp2, pos=exp1left}))
 
   (* Function calls *)
-  |   ID LPAREN arguments RPAREN         ()
+  |   ID LPAREN arguments RPAREN        (A.CallExp({func=Symbol.symbol ID, args=funarg, pos=IDleft}))
 
   (* Expressions in (nested?) parens *)
-  |   LPAREN exp RPAREN             ()
+  |   LPAREN exp RPAREN                 (exp)
+
+  (* Empty parentheses *)
+  |   LPAREN RPAREN                     (A.SeqExp([]))
 
   (* Record creation *)
-  |   ID LBRACE record RBRACE       ()
+  |   ID LBRACE record RBRACE           (A.RecordExp({fields=record , typ=Symbol.symbol ID , pos=IDleft}))
 
   (* Array creation *)
-  |   ID LBRACK exp RBRACK OF exp   ()
+  |   ID LBRACK exp RBRACK OF exp       (A.ArrayExp({typ=Symbol.symbol ID, size=exp1, init=exp2, pos=IDleft}))
 
   (* Assignment to l-value *)
-  |   lval ASSIGN exp               ()
+  |   lval ASSIGN exp                   (A.AssignExp({var=lval, exp=exp, pos=lvalleft}))
   
   (* Control flow statements *)
-  |   IF exp THEN exp ELSE exp      ()
-  |   IF exp THEN exp   %prec DO    ()
+  |   IF exp THEN exp ELSE exp          (A.IfExp({test=exp1, then'=exp2, else'=SOME exp3, pos=IFleft}))
+  |   IF exp THEN exp   %prec DO        (A.IfExp({test=exp1, then'=exp2, else'=NONE, pos=IFleft}))
 
   (* Loops *)
-  |   WHILE exp DO exp ()
-  |   FOR ID ASSIGN exp TO exp DO exp ()
+  |   WHILE exp DO exp                  (A.WhileExp({test=exp1, body=exp2, pos=WHILEleft}))
+  |   FOR ID ASSIGN exp TO exp DO exp   (A.ForExp({var=Symbol.symbol ID, escape=(ref true), lo=exp1, hi=exp2, body=exp3, pos=FORleft}))
 
-  |   BREAK ()
+  |   BREAK                             (A.BreakExp(BREAKleft))
 
   (* Let statements *)
-  |   LET decs IN exp_seq END ()
+  |   LET decs IN exp_seq END           (A.LetExp({decs=decs, body=exp_seq, pos=LETleft}))
 
   (* Boolean operators *)
-  |   exp AND exp ()
-  |   exp OR exp ()
+  |   exp AND exp         (A.IfExp({test=exp1, then'=exp2, else'=SOME(A.IntExp(0), pos=exp1left)}))
+  |   exp OR exp          (A.IfExp({test=exp1, then'=A.IntExp(1), else'=SOME exp2, pos=exp1left}))
 
   (* Equality checking operators *)
-  |   exp EQ exp          ()
-  |   exp NEQ exp         ()
-  |   exp LE exp          ()
-  |   exp GE exp          ()
-  |   exp LT exp          ()
-  |   exp GT exp          ()
-  |   LPAREN exp RPAREN   () 
+  |   exp EQ exp          (A.OpExp({left=exp1, oper=A.EqOp, right=exp2, pos=exp1left}))
+  |   exp NEQ exp         (A.OpExp({left=exp1, oper=A.NeqOp, right=exp2, pos=exp1left}))
+  |   exp LE exp          (A.OpExp({left=exp1, oper=A.LeOp, right=exp2, pos=exp1left}))
+  |   exp GE exp          (A.OpExp({left=exp1, oper=A.GeOp, right=exp2, pos=exp1left}))
+  |   exp LT exp          (A.OpExp({left=exp1, oper=A.LtOp, right=exp2, pos=exp1left}))
+  |   exp GT exp          (A.OpExp({left=exp1, oper=A.GtOp, right=exp2, pos=exp1left}))
 
 
 (* Allow dealing with sequences of expressions, such as in the first body
    of a let statement-- separated by semicolons. *)
 exp_seq:
-      (* empty *)         ()
-  |   exp exp_seq_tail    ()
+      (* empty *)         ([])
+  |   exp exp_seq_tail    (exp::exp_seq_tail)
   
 exp_seq_tail:
-      (* empty *)                 ()
-  |   SEMICOLON exp exp_seq_tail  ()
+      (* empty *)                 ([])
+  |   SEMICOLON exp exp_seq_tail  ((exp, expleft)::exp_seq_tail)
