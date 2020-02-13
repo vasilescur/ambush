@@ -4,6 +4,9 @@ Group is
   $/basis.cm
   $/smlnj-lib.cm
   $/ml-yacc-lib.cm
+
+  (* Our very own SockSound library! *)
+  socksound.sml
   
   (* Our source files *)
   tiger.lex

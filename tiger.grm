@@ -49,8 +49,8 @@ fun a_IGNORE_ME x = 3;
     | tyfield of A.field
     | tyfields of A.field list
     | tyfields_tail of A.field list
-    | exp_seq of A.exp
-    | exp_seq_tail of (A.exp * pos) list
+    (* | exp_seq of A.exp *)
+    | exp_tail of (A.exp * pos) list
     | arguments of A.exp list
     | arguments_tail of A.exp list
     | record_field of (A.symbol * A.exp * pos)
@@ -209,7 +209,7 @@ arguments:
 
 arguments_tail:
       (* empty *)               ([])
-  |   COMMA exp arguments_tail  (exp::arguments_tail)
+  |   COMMA exp arguments_tail  (exp::arguments_tail)     (* <-- Rule 32 as of 1:36 AM *)
 
 
 (* Record stuff *)
@@ -255,6 +255,7 @@ exp:
 
   (* Array creation *)
   |   ID LBRACK exp RBRACK OF exp       (A.ArrayExp({typ=Symbol.symbol ID, size=exp1, init=exp2, pos=IDleft}))
+  (* ^^ rule 50 as of 1:37 AM *)
 
   (* Assignment to l-value *)
   |   lval ASSIGN exp                   (A.AssignExp({var=lval, exp=exp, pos=lvalleft}))
@@ -264,13 +265,13 @@ exp:
   |   IF exp THEN exp   %prec DO        (A.IfExp({test=exp1, then'=exp2, else'=NONE, pos=IFleft}))
 
   (* Loops *)
-  |   WHILE exp DO exp                  (A.WhileExp({test=exp1, body=exp2, pos=WHILEleft}))
+  |   WHILE exp DO exp                  (A.WhileExp({test=exp1, body=exp, pos=WHILEleft}))
   |   FOR ID ASSIGN exp TO exp DO exp   (A.ForExp({var=Symbol.symbol ID, escape=(ref true), lo=exp1, hi=exp2, body=exp3, pos=FORleft}))
 
   |   BREAK                             (A.BreakExp(BREAKleft))
 
   (* Let statements *)
-  |   LET decs IN exp_seq END           (A.LetExp({decs=decs, body=exp_seq, pos=LETleft}))
+  |   LET decs IN exp END               (A.LetExp({decs=decs, body=exp, pos=LETleft}))
 
   (* Boolean operators *)
   |   exp AND exp         (A.IfExp({test=exp1, then'=exp2, else'=SOME (A.IntExp 0), pos=exp1left}))
@@ -284,6 +285,8 @@ exp:
   |   exp LT exp          (A.OpExp({left=exp1, oper=A.LtOp, right=exp2, pos=exp1left}))
   |   exp GT exp          (A.OpExp({left=exp1, oper=A.GtOp, right=exp2, pos=exp1left}))
 
+  (* Expression sequence *)
+  |   exp exp_tail            (A.SeqExp((exp, expleft)::exp_tail))
 
 (* Allow dealing with sequences of expressions, such as in the first body
    of a let statement-- separated by semicolons. *)
@@ -292,10 +295,14 @@ exp:
   |   exp exp_seq_tail    (exp::exp_seq_tail) *)
 
 
-exp_seq:
+(* exp_seq:
       (* empty *)                 (A.NilExp)
+  |   exp                         (A.SeqExp([(exp, expleft)]))
   |   exp exp_seq_tail            (A.SeqExp((exp, expleft)::exp_seq_tail))
   
 exp_seq_tail:
-      (* empty *)                 ([])
-  |   SEMICOLON exp exp_seq_tail  ((exp, expleft)::exp_seq_tail)
+      SEMICOLON exp exp_seq_tail  ((exp, expleft)::exp_seq_tail) *)
+
+exp_tail:
+      SEMICOLON exp exp_tail      ((exp, expleft)::exp_tail)
+  |   (* empty *)                 ([])
