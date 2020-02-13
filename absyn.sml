@@ -28,12 +28,8 @@ and exp = VarExp of var
         | ArrayExp of {typ: symbol, size: exp, init: exp, pos: pos}
 
 and dec = FunctionDec of fundec list
-        | VarDec of {name: symbol,
-		     escape: bool ref,
-		     typ: (symbol * pos) option,
-		     init: exp,
-		     pos: pos}
-        | TypeDec of {name: symbol, ty: ty, pos: pos} list
+        | VarDec of vardec
+        | TypeDec of tydec list
 
 and ty = NameTy of symbol * pos
        | RecordTy of field list
@@ -50,6 +46,14 @@ withtype field = {name: symbol, escape: bool ref,
 		   result: (symbol * pos) option,
 		   body: exp,
 		   pos: pos}
+
+   and   vardec =  {name: symbol,
+		     escape: bool ref,
+		     typ: (symbol * pos) option,
+		     init: exp,
+		     pos: pos}
+
+    and   tydec =  {name: symbol, ty: ty, pos: pos}
      
 end
         

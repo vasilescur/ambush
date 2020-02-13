@@ -1,7 +1,6 @@
-structure A = Absyn
+structure A = Absyn;
 
-fun a x = 3;
-
+fun a_IGNORE_ME x = 3;
 (*Ignore the above definition, it is just there to fix syntax highlighting :P *)
 
 (*******************************************************************************
@@ -11,6 +10,12 @@ fun a x = 3;
  * Description: Grammar definition file for ML-Yacc.
  *              Tiger Reference: https://www.lrde.epita.fr/~tiger/tiger.html
  ******************************************************************************)
+
+
+(* fun buildTyDec (newType, (A.TypeDec existing)::tail) = A.TypeDec(newType::existing)::tail
+  | buildTyDec (newType, h::t) = A.TypeDec([])::[]
+  | buildTyDec (newType, []) = A.TypeDec([newType])::[] *)
+
 
 
 %%
@@ -24,27 +29,37 @@ fun a x = 3;
   | ARRAY | IF | THEN | ELSE | WHILE | FOR | TO | DO | LET | IN | END | OF
   | BREAK | NIL
   | FUNCTION | VAR | TYPE
+  | LOWPREC | HIGHPREC
 
 %nonterm 
       program of A.exp
     | exp of A.exp
     | lval of A.var
-    | decs  of A.dec list 
-    | tydec of A.dec list
-    | vardec of A.dec
-    | fundec of A.dec list
+    | lval_not_id of A.var
+    | decs of A.dec list
+    | not_fundec of A.dec list
+    | not_tydec of A.dec list
+    | dec of A.dec
     | ty of A.ty
+    | tydec of A.tydec
+    | tydecs of A.tydec list
+    | vardec of A.vardec
+    | fundec of A.fundec
+    | fundecs of A.fundec list
+    | tyfield of A.field
     | tyfields of A.field list
     | tyfields_tail of A.field list
     | exp_seq of A.exp
     | exp_seq_tail of (A.exp * pos) list
     | arguments of A.exp list
     | arguments_tail of A.exp list
-    | record of (A.symbol * A.exp * pos) list
+    | record_field of (A.symbol * A.exp * pos)
     | record_tail of (A.symbol * A.exp * pos) list
 
 
 %right OF
+
+%nonassoc LOWPREC
 
 %nonassoc DO
 %nonassoc ELSE
@@ -59,7 +74,7 @@ fun a x = 3;
 
 %left UMINUS
 
-(* How do we deal with negative signs? *)
+%nonassoc HIGHPREC
 
 %pos int
 
@@ -87,45 +102,105 @@ fun a x = 3;
 program: exp                          (exp)
 
 (* Multiple declarations *)
-decs:   
-      (* empty *)                     ([])
-  |   tydec decs                      ([](* A.TypeDec() *)) (* Fill this *)
-  |   vardec decs                     ([](* A.VarDec() *))   (* Fill this *)
-  |   fundec decs                     ([](* A.FunctionDec() *)) (* Fill this *)
+(* decs: 
+      (* empty *)           ([])
+  |   tydec not_tydec       (tydec @ not_tydec)
+  |   vardec decs           (vardec :: decs)
+  |   fundec not_fundec     (fundec @ not_fundec)
+
+not_tydec:
+      (* empty *)           ([])
+  |   vardec decs           (vardec :: decs)
+  |   fundec not_fundec     (fundec @ not_fundec)
+
+not_fundec:
+      (* empty *)           ([])
+  |   vardec decs           (vardec :: decs)
+  |   tydec not_tydec       (tydec @ not_tydec) *)
 
 
-(* NOTE:
-    As seen in `tyfields` and `tyfields_tail` below, the system we use to deal
-    with lists of potentially more than one element is recursive and resembles
-    the regular expresssion a{,a}*
- *)
+decs: 
+      (* empty *)       (nil)
+  |   dec decs          (decs @ [dec])
+
+dec:
+      vardec                   (A.VarDec vardec)
+  |   tydecs   %prec LOWPREC   (A.TypeDec tydecs)
+  |   fundecs  %prec LOWPREC   (A.FunctionDec fundecs)
+
+tydecs: 
+      tydec         ([tydec])
+  |   tydecs tydec  (tydecs @ [tydec])
+
+tydec: 
+      TYPE ID EQ ty                   ({name=Symbol.symbol ID, ty=ty, pos=TYPEleft})
+
+ty:   
+      ID                              (A.NameTy(Symbol.symbol ID, IDleft))
+  |   LBRACE tyfields RBRACE          (A.RecordTy(tyfields))
+  |   ARRAY OF ID                     (A.ArrayTy(Symbol.symbol ID, ARRAYleft))    (* array of type-id *)
 
 (* Type fields *)
+
+tyfield: 
+      ID COLON ID                     ({name=Symbol.symbol ID1, escape=(ref false), typ=Symbol.symbol ID2, pos=ID1left})
+
 tyfields: 
       (* empty *)                     ([]) 
-  |   ID COLON ID tyfields_tail       ([] (* TODO *))
+  (* |   ID COLON ID tyfields_tail       ([] TODO) *)
+  |   tyfield tyfields_tail           ([tyfield] @ tyfields_tail)
 
 (* Any of the tail of a list of type fields *)
 tyfields_tail: 
       (* empty *)                     ([])
-  |   COMMA ID COLON ID tyfields_tail ([] (* TODO *))
-
+  |   COMMA tyfield tyfields_tail     ([tyfield] @ tyfields_tail)
 
 (* Variable declarations *)
 vardec: 
-      VAR ID ASSIGN exp               (A.VarDec({name = Symbol.symbol ID, escape = (ref true), typ = NONE, init=exp, pos = ID1left}))
-  |   VAR ID COLON ID ASSIGN exp      (A.VarDec({name = Symbol.symbol ID1, escape = (ref true), typ = SOME (Symbol.symbol ID2, ID2left), init = exp, pos = VARleft}))
+      VAR ID ASSIGN exp               ({name = Symbol.symbol ID, escape = (ref true), typ = NONE, init=exp, pos = ID1left})
+  |   VAR ID COLON ID ASSIGN exp      ({name = Symbol.symbol ID1, escape = (ref true), typ = SOME (Symbol.symbol ID2, ID2left), init = exp, pos = VARleft})
 
 (* Function declarations *)
 fundec: 
-    FUNCTION ID LPAREN tyfields RPAREN EQ exp           (A.FunctionDec([{name=Symbol.symbol ID, params=tyfields, result=NONE, body=exp, pos=FUNCTIONleft}])::[])
-  | FUNCTION ID LPAREN tyfields RPAREN COLON ID EQ exp  (A.FunctionDec([{name=Symbol.symbol ID, params=tyfields, result=SOME(Symbol.symbol ID2, ID2left), body=exp, pos=FUNCTIONleft}])::[])
+    FUNCTION ID LPAREN tyfields RPAREN EQ exp           ({name=Symbol.symbol ID, params=tyfields, result=NONE, body=exp, pos=FUNCTIONleft})
+  | FUNCTION ID LPAREN tyfields RPAREN COLON ID EQ exp  ({name=Symbol.symbol ID, params=tyfields, result=SOME(Symbol.symbol ID2, ID2left), body=exp, pos=FUNCTIONleft})
+
+
+fundecs:
+      fundec                          ([fundec])
+  |   fundecs fundec                  (fundecs @ [fundec])
+      
+
+
+
+
+
+
+
+
 
 (* L-Values are locations that can be read/assigned *)
-lval: 
+(* lval: 
       ID                          (A.SimpleVar(Symbol.symbol ID, IDleft))
   |   lval DOT ID                 (A.FieldVar(lval, Symbol.symbol ID, lvalleft))
-  |   lval LBRACK exp RBRACK      (A.SubscriptVar(lval, exp, lvalleft))
+  |   lval LBRACK exp RBRACK      (A.SubscriptVar(lval, exp, lvalleft)) *)
+
+
+(* Refactor into lval and lval_not_id to avoid the S/R conflict *)
+(* As seen in: https://stackoverflow.com/questions/26968665/bison-shift-reduce-conflict-tiger-compiler *)
+
+lval:
+      ID            (A.SimpleVar(Symbol.symbol ID, IDleft))
+  (* If adding anything here ---  update in exp production *)
+  |   lval_not_id   (lval_not_id)
+
+
+lval_not_id:
+      lval DOT ID                     (A.FieldVar(lval, Symbol.symbol ID, lvalleft))
+  |   ID LBRACK exp RBRACK            (A.SubscriptVar(A.SimpleVar(Symbol.symbol ID, IDleft), exp, IDleft))
+  |   lval_not_id LBRACK exp RBRACK   (A.SubscriptVar(lval_not_id, exp, lval_not_idleft))
+
+
 
 (* Arguments *)
 arguments:
@@ -136,30 +211,24 @@ arguments_tail:
       (* empty *)               ([])
   |   COMMA exp arguments_tail  (exp::arguments_tail)
 
-(* Type declarations *)
-tydec: 
-      TYPE ID EQ ty                   (A.TypeDec([{name=Symbol.symbol ID, ty=ty, pos=TYPEleft}])::[])    (* type type-id = ty *)
 
-(* Types *)
-ty:   
-      ID                              (A.NameTy(Symbol.symbol ID, IDleft))
-  |   LBRACE tyfields RBRACE          (A.RecordTy(tyfields))
-  |   ARRAY OF ID                     (A.ArrayTy(Symbol.symbol ID, ARRAYleft))    (* array of type-id *)
+(* Record stuff *)
+record_field:
+      ID EQ exp   (Symbol.symbol ID, exp, IDleft)
 
-(* Record creation *)
-record:
-      (* Empty *)                 ([])
-  |   ID EQ exp record_tail       ([])
-
-record_tail:
-      (* Empty *)                 ([])
-  |   COMMA ID EQ exp record_tail ([])
+record_tail:    
+      (* empty *)                     ([])
+  |   COMMA record_field record_tail  ([record_field] @ record_tail)
 
 
 (* Expressions *)
 exp:
+  (* These two lines are refactored as in https://stackoverflow.com/questions/26968665/bison-shift-reduce-conflict-tiger-compiler *)
+      ID                  (A.VarExp(A.SimpleVar(Symbol.symbol ID, IDleft)))
+  |   lval_not_id         (A.VarExp(lval_not_id))
+
   (* Literals *)
-      NIL                 (A.NilExp)
+  |   NIL                 (A.NilExp)
   |   INT                 (A.IntExp(INT))
   |   STRING              (A.StringExp(STRING, STRINGleft))
 
@@ -182,7 +251,7 @@ exp:
   |   LPAREN RPAREN                     (A.SeqExp([]))
 
   (* Record creation *)
-  |   ID LBRACE record RBRACE           (A.RecordExp({fields=record , typ=Symbol.symbol ID , pos=IDleft}))
+  |   ID LBRACE record_field record_tail RBRACE     (A.RecordExp({fields= [record_field] @ record_tail, typ=Symbol.symbol ID , pos=IDleft}))
 
   (* Array creation *)
   |   ID LBRACK exp RBRACK OF exp       (A.ArrayExp({typ=Symbol.symbol ID, size=exp1, init=exp2, pos=IDleft}))
