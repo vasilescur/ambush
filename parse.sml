@@ -8,37 +8,44 @@ struct
   fun parse filename =
       let val _ = (ErrorMsg.reset(); ErrorMsg.fileName := filename)
 
+          val ENABLE_SOUND : bool = true
+
           (* Initialize SockSound! *)
-          (* This will kill itself upon connection close *)
-          (* val _ = OS.Process.system "python3 socksound.py & disown"  *)
+          (* val _ = OS.Process.system "python3 socksound.py & disown"  *) (* This will kill itself upon connection close *)
           (* val _ = OS.Process.sleep (Time.fromMilliseconds 500) *)
-          val sock = valOf (SockSound.init ())
+          val sock = SockSound.init () handle SysErr => NONE
+
+          (* Don't play sound if it's disabled. *)
+          fun play (note, duration) = 
+            if ENABLE_SOUND andalso Option.isSome sock then SOME (SockSound.play ((valOf sock), note, duration)) else NONE
 
           (* Startup sound! *)
-          val _ = SockSound.play (sock, "c5", 0.4)
-          val _ = SockSound.play (sock, "g5", 0.4)
-          val _ = SockSound.play (sock, "c6", 1.0)
+          val _ = play ("c5", 0.4)
+          val _ = play ("g5", 0.4)
+          val _ = play ("c6", 1.0)
 
           val file = TextIO.openIn filename
           fun get _ = TextIO.input file
 
           fun parseerror(s,p1,p2) = ErrorMsg.error p1 s
 
-          val _ = SockSound.play (sock, "d4", 1.5)
+          val _ = play ("d4", 1.5)
           val lexer = LrParser.Stream.streamify (Lex.makeLexer get)
-          val _ = SockSound.play (sock, "f#5", 0.8)
+          val _ = play ("f#5", 0.8)
 
-          val _ = SockSound.play (sock, "a4", 1.5)
+          val _ = play ("a4", 1.5)
           val (absyn, _) = TigerP.parse(30,lexer,parseerror,())
-          val _ = SockSound.play (sock, "c#5", 0.8)
+          val _ = play ("c#5", 0.8)
 
-          val _ = SockSound.play (sock, "d5", 2.0)
+          val _ = play ("d5", 2.0)
        in TextIO.closeIn file;
           print "\nAST (pretty): \n\n";
           PrintAbsyn.print (TextIO.stdOut, absyn);
           print "\nabsyn: \n";
 
-          SockSound.close (sock);
+          if   Option.isSome sock
+          then SockSound.close (valOf sock)
+          else ();
 
           absyn
       end handle LrParser.ParseError => raise ErrorMsg.Error

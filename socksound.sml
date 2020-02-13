@@ -15,6 +15,7 @@ struct
     in
       SOME socket
     end
+    handle SysErr => NONE
     (* handle SysErr e => let val _ = print "Could not connect to sound socket.\n" 
                        in  raise SysErr e
                        end *)
