@@ -157,8 +157,8 @@ to parse the Tiger test cases correctly. For example, the following Tiger progra
 ```sml
 /* an array type and an array variable */
 let
-	type  arrtype = array of int
-	var arr1:arrtype := arrtype [10] of 0
+    type  arrtype = array of int
+    var arr1:arrtype := arrtype [10] of 0
 in
   arr1
 end
