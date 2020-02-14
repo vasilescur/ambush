@@ -147,6 +147,68 @@ fun eof () =
   end
 ```
 
+## Parser
+
+Implemented a parser that takes in a set of tokens and outputs an AST.
+
+The parser currently has neither shift/reduce nor reduce/reduce conflicts, and seems
+to parse the Tiger test cases correctly. For example, the following Tiger program:
+
+```sml
+/* an array type and an array variable */
+let
+	type  arrtype = array of int
+	var arr1:arrtype := arrtype [10] of 0
+in
+  arr1
+end
+```
+
+Parses to the tree:
+
+```sml
+LetExp([
+ VarDec(arr1,true,SOME(arrtype),
+  ArrayExp(arrtype,
+   IntExp(10),
+   IntExp(0))),
+ TypeDec[
+  (arrtype,
+   ArrayTy(int))]],
+ VarExp(
+  SimpleVar(arr1)))
+```
+
+## Extra Credit Features
+
+### Musical Tiger
+
+Our compiler generates sound output as it progresses. This feature is still in its
+early stages, but eventually, the plan is to have each stage of the compilation 
+process emit its own musical background track-- shifting keys/chords in a 
+progression as we climb up and down Compiler Mountain-- and each token or node
+or instruction emitting its own specific note in fast succession. Think dial-up
+modem connection noise.
+
+#### Implementation
+
+This is implemented using a TCP Socket connection from SML to a helper script
+written in Python. The Python script makes use of a cross-platform sound output
+library to generate and play sounds through the device's speakers when it receives
+input through the socket from the SML client. In turn, commands to play certain
+tones are peppered throughout the compiler's driver files:
+
+```sml
+val _ = play ("d4", 1.5)
+val lexer = LrParser.Stream.streamify (Lex.makeLexer get)
+val _ = play ("f#5", 0.8)
+```
+
+Related files:
+
+  - `socksound.sml`
+  - `socksound.py`
+
 ## Future Compiler Features (Extra Credit)
 
  - [ ] SML Formatter
@@ -171,3 +233,6 @@ fun eof () =
 ![Functional programming meme](https://pics.me.me/do-you-smoke-functional-very-time-programming-1s-more-effective-36314444.png)
 
 ![Commit messages meme](https://pics.me.me/me-i-should-give-this-commit-a-proper-descriptive-message-58056481.png)
+
+>Do you want us to send the cocaine directly to your email? 
+> -- Jake Derry, 2020

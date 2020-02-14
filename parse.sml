@@ -5,19 +5,28 @@ struct
   structure TigerP = Join(structure ParserData = TigerLrVals.ParserData
 			structure Lex=Lex
 			structure LrParser = LrParser)
+
+  (* --- ENABLE SOUND IN THE COMPILATION PROCESS? --- *)
+  val ENABLE_SOUND : bool = false
+
+  fun play (note, duration) = 
+            if   ENABLE_SOUND andalso Option.isSome (!SockSound.sock)
+            then SOME (SockSound.play (note, duration)) 
+            else NONE
+  
   fun parse filename =
       let val _ = (ErrorMsg.reset(); ErrorMsg.fileName := filename)
 
-          val ENABLE_SOUND : bool = true
-
           (* Initialize SockSound! *)
-          (* val _ = OS.Process.system "python3 socksound.py & disown"  *) (* This will kill itself upon connection close *)
-          (* val _ = OS.Process.sleep (Time.fromMilliseconds 500) *)
-          val sock = SockSound.init () handle SysErr => NONE
+          val _ = OS.Process.system "python3 socksound.py & disown"   (* This will kill itself upon connection close *)
+          val _ = OS.Process.sleep (Time.fromMilliseconds 1000)
 
+          val _ = SockSound.sock := SockSound.init ()
+
+          (* val _ = print "sock is " ^ (valOf (!SockSound.sock)) *)
+          
           (* Don't play sound if it's disabled. *)
-          fun play (note, duration) = 
-            if ENABLE_SOUND andalso Option.isSome sock then SOME (SockSound.play ((valOf sock), note, duration)) else NONE
+          
 
           (* Startup sound! *)
           val _ = play ("c5", 0.4)
@@ -43,9 +52,7 @@ struct
           PrintAbsyn.print (TextIO.stdOut, absyn);
           print "\nabsyn: \n";
 
-          if   Option.isSome sock
-          then SockSound.close (valOf sock)
-          else ();
+          SockSound.close ();
 
           absyn
       end handle LrParser.ParseError => raise ErrorMsg.Error

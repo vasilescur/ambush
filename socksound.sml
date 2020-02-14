@@ -1,10 +1,12 @@
 structure SockSound = 
 struct
 
+  val sock : ((Socket.active INetSock.stream_sock) option) ref = ref NONE
+
   (* Generate a loopback socket address *)
   val addr = 
     let val ad = valOf (NetHostDB.fromString "127.0.0.1")
-    in  INetSock.toAddr (ad, 65530) (* INetSock.any 65531 *)
+    in  INetSock.toAddr (ad, 65531) (* INetSock.any 65531 *)
     end
 
   (* Open and connect to the socket *)
@@ -21,18 +23,20 @@ struct
                        end *)
 
   (* Close the socket connection *)
-  fun close (sock) = 
-    Socket.close(sock)
+  fun close () = 
+    if   Option.isSome (!sock)  (* "bang (!) sock... isn't that the capital of Thailand?" --Ryan *)
+    then Socket.close(valOf (!sock))
+    else ()
 
   (* Write a string buffer to the socket *)
   fun write (socket, s:string) = 
     (Socket.sendVec (socket, Word8VectorSlice.full (Byte.stringToBytes s)); ())
 
   (* Play a given note for a given duration to the specified socket *)
-  fun play (socket, name, duration) = 
+  fun play (name, duration) = 
     let val payload = name ^ "," ^ (Real.toString duration) ^ ",1"
         val timeMillis = Int.toLarge (500 + 2000 * (trunc duration))
-    in  write (socket, payload);
+    in  write (valOf (!sock), payload);
         OS.Process.sleep (Time.fromMilliseconds timeMillis)
     end
 

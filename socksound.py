@@ -6,7 +6,7 @@ import socket
 import music21 as m21
 
 HOST = '127.0.0.1'
-PORT = 65530
+PORT = 65531
 
 SAMPLE_RATE = 44100
 

@@ -101,24 +101,8 @@ fun a_IGNORE_ME x = 3;
 (* A Tiger program is just an expression *)
 program: exp                          (exp)
 
+
 (* Multiple declarations *)
-(* decs: 
-      (* empty *)           ([])
-  |   tydec not_tydec       (tydec @ not_tydec)
-  |   vardec decs           (vardec :: decs)
-  |   fundec not_fundec     (fundec @ not_fundec)
-
-not_tydec:
-      (* empty *)           ([])
-  |   vardec decs           (vardec :: decs)
-  |   fundec not_fundec     (fundec @ not_fundec)
-
-not_fundec:
-      (* empty *)           ([])
-  |   vardec decs           (vardec :: decs)
-  |   tydec not_tydec       (tydec @ not_tydec) *)
-
-
 decs: 
       (* empty *)       (nil)
   |   dec decs          (decs @ [dec])
@@ -140,6 +124,7 @@ ty:
   |   LBRACE tyfields RBRACE          (A.RecordTy(tyfields))
   |   ARRAY OF ID                     (A.ArrayTy(Symbol.symbol ID, ARRAYleft))    (* array of type-id *)
 
+
 (* Type fields *)
 
 tyfield: 
@@ -150,42 +135,30 @@ tyfields:
   (* |   ID COLON ID tyfields_tail       ([] TODO) *)
   |   tyfield tyfields_tail           ([tyfield] @ tyfields_tail)
 
+
 (* Any of the tail of a list of type fields *)
 tyfields_tail: 
       (* empty *)                     ([])
   |   COMMA tyfield tyfields_tail     ([tyfield] @ tyfields_tail)
+
 
 (* Variable declarations *)
 vardec: 
       VAR ID ASSIGN exp               ({name = Symbol.symbol ID, escape = (ref true), typ = NONE, init=exp, pos = ID1left})
   |   VAR ID COLON ID ASSIGN exp      ({name = Symbol.symbol ID1, escape = (ref true), typ = SOME (Symbol.symbol ID2, ID2left), init = exp, pos = VARleft})
 
+
 (* Function declarations *)
 fundec: 
     FUNCTION ID LPAREN tyfields RPAREN EQ exp           ({name=Symbol.symbol ID, params=tyfields, result=NONE, body=exp, pos=FUNCTIONleft})
   | FUNCTION ID LPAREN tyfields RPAREN COLON ID EQ exp  ({name=Symbol.symbol ID, params=tyfields, result=SOME(Symbol.symbol ID2, ID2left), body=exp, pos=FUNCTIONleft})
 
-
 fundecs:
       fundec                          ([fundec])
   |   fundecs fundec                  (fundecs @ [fundec])
-      
-
-
-
-
-
-
-
 
 
 (* L-Values are locations that can be read/assigned *)
-(* lval: 
-      ID                          (A.SimpleVar(Symbol.symbol ID, IDleft))
-  |   lval DOT ID                 (A.FieldVar(lval, Symbol.symbol ID, lvalleft))
-  |   lval LBRACK exp RBRACK      (A.SubscriptVar(lval, exp, lvalleft)) *)
-
-
 (* Refactor into lval and lval_not_id to avoid the S/R conflict *)
 (* As seen in: https://stackoverflow.com/questions/26968665/bison-shift-reduce-conflict-tiger-compiler *)
 
@@ -194,12 +167,10 @@ lval:
   (* If adding anything here ---  update in exp production *)
   |   lval_not_id   (lval_not_id)
 
-
 lval_not_id:
       lval DOT ID                     (A.FieldVar(lval, Symbol.symbol ID, lvalleft))
   |   ID LBRACK exp RBRACK            (A.SubscriptVar(A.SimpleVar(Symbol.symbol ID, IDleft), exp, IDleft))
   |   lval_not_id LBRACK exp RBRACK   (A.SubscriptVar(lval_not_id, exp, lval_not_idleft))
-
 
 
 (* Arguments *)
@@ -255,7 +226,6 @@ exp:
 
   (* Array creation *)
   |   ID LBRACK exp RBRACK OF exp       (A.ArrayExp({typ=Symbol.symbol ID, size=exp1, init=exp2, pos=IDleft}))
-  (* ^^ rule 50 as of 1:37 AM *)
 
   (* Assignment to l-value *)
   |   lval ASSIGN exp                   (A.AssignExp({var=lval, exp=exp, pos=lvalleft}))
@@ -288,21 +258,9 @@ exp:
   (* Expression sequence *)
   |   exp exp_tail            (A.SeqExp((exp, expleft)::exp_tail))
 
+
 (* Allow dealing with sequences of expressions, such as in the first body
    of a let statement-- separated by semicolons. *)
-(* exp_seq:
-      (* empty *)         ([])
-  |   exp exp_seq_tail    (exp::exp_seq_tail) *)
-
-
-(* exp_seq:
-      (* empty *)                 (A.NilExp)
-  |   exp                         (A.SeqExp([(exp, expleft)]))
-  |   exp exp_seq_tail            (A.SeqExp((exp, expleft)::exp_seq_tail))
-  
-exp_seq_tail:
-      SEMICOLON exp exp_seq_tail  ((exp, expleft)::exp_seq_tail) *)
-
 exp_tail:
       SEMICOLON exp exp_tail      ((exp, expleft)::exp_tail)
   |   (* empty *)                 ([])
