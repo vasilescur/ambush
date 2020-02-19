@@ -201,7 +201,8 @@ So far, this feature has only been tested on MacOS Catalina.
 
 #### Implementation
 
-This is implemented using a TCP Socket connection from SML to a helper script
+This is implemented using a custom library named SockSound that uses a 
+TCP Socket connection from SML to send messages to a helper "server" script
 written in Python. The Python script makes use of a cross-platform sound output
 library to generate and play sounds through the device's speakers when it receives
 input through the socket from the SML client. In turn, commands to play certain
@@ -212,6 +213,8 @@ val _ = play ("d4", 1.5)
 val lexer = LrParser.Stream.streamify (Lex.makeLexer get)
 val _ = play ("f#5", 0.8)
 ```
+
+The SockSound library is implemented as an SML structure in `socksound.sml`.
 
 Related files:
 
