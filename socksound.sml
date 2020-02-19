@@ -1,6 +1,16 @@
+(*******************************************************************************
+ * File:        socksound.sml
+ * Authors:     Radu Vasilescu
+ * 
+ * Description: Provides an interface to play sound via a socket connection to a
+ *              helper "server" script running on the same machine. For an 
+ *              example server implementation, see the file socksound.py.
+ ******************************************************************************)
+
 structure SockSound = 
 struct
 
+  (* Globally accessible sock variable-- allows re-using the same connection *)
   val sock : ((Socket.active INetSock.stream_sock) option) ref = ref NONE
 
   (* Generate a loopback socket address *)
