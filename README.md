@@ -28,7 +28,7 @@ repository. Then, run the following command to compile the project:
 CM.make "sources.cm";
 ```
 
-In order to test the lexer, use the following command, where `myFile.tig` is 
+In order to test the parser, use the following command, where `myFile.tig` is 
 a relative path to the Tiger input source file:
 
 ```sml
@@ -190,6 +190,15 @@ progression as we climb up and down Compiler Mountain-- and each token or node
 or instruction emitting its own specific note in fast succession. Think dial-up
 modem connection noise.
 
+Enable or disable this feature by modifying the value `ENABLE_SOUND : bool` in `parse.sml`.
+
+Using this feature requires some setup. Prerequisites include a functioning `python3` 
+environment and the python libraries `music21`, `pyaudio`, and `numpy` installed
+and available. It is possible that there may exist other prerequisites, which can 
+be installed if errors arise when using this feature. 
+
+So far, this feature has only been tested on MacOS Catalina. 
+
 #### Implementation
 
 This is implemented using a TCP Socket connection from SML to a helper script
@@ -235,4 +244,4 @@ Related files:
 ![Commit messages meme](https://pics.me.me/me-i-should-give-this-commit-a-proper-descriptive-message-58056481.png)
 
 >Do you want us to send the cocaine directly to your email? 
-> -- Jake Derry, 2020
+> -- Jake Derry, 2020, somehow contextually related to this project
