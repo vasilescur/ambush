@@ -22,13 +22,6 @@ fun a_IGNORE_ME x = 3;
  ******************************************************************************)
 
 
-(* fun buildTyDec (newType, (A.TypeDec existing)::tail) = A.TypeDec(newType::existing)::tail
-  | buildTyDec (newType, h::t) = A.TypeDec([])::[]
-  | buildTyDec (newType, []) = A.TypeDec([newType])::[] *)
-
-
-
-
 end
 structure LrTable = Token.LrTable
 structure Token = Token

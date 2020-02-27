@@ -115,14 +115,7 @@ type pos = int
 (* type lexresult = Tokens.token *)
 
 (* Shortcut function to calculate the start and end positions of a token *)
-fun s_e pos text = 
-  let val _ = SockSound.play (if pos < 10 then "c4"
-                                else if pos < 20 then "d#4"
-                                else if pos < 30 then "g4"
-                                else if pos < 40 then "a#4"
-                                else "b4", 0.1)
-  in  (pos, pos + String.size text)
-  end
+fun s_e pos text = (pos, pos + String.size text)
 
 
 
