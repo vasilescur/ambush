@@ -1,4 +1,4 @@
-structure Parse : sig val parse : string -> Absyn.exp  end =
+structure Parse : sig val parse : string -> Absyn.exp end =
 struct 
   structure TigerLrVals = TigerLrValsFun(structure Token = LrParser.Token)
   structure Lex = TigerLexFun(structure Tokens = TigerLrVals.Tokens)
@@ -15,9 +15,9 @@ struct
           val lexer = LrParser.Stream.streamify (Lex.makeLexer get)
           val (absyn, _) = TigerP.parse(30,lexer,parseerror,())
        in TextIO.closeIn file;
-          print "\nAST (pretty): \n\n";
+          (* print "\nAST (pretty): \n\n";
           PrintAbsyn.print (TextIO.stdOut, absyn);
-          print "\nabsyn: \n";
+          print "\nabsyn: \n"; *)
           absyn
       end handle LrParser.ParseError => raise ErrorMsg.Error
 

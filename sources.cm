@@ -6,14 +6,30 @@ Group is
   $/ml-yacc-lib.cm
   
   (* Our source files *)
-  tiger.lex
+  main.sml
+
+  (* General *)
   errormsg.sml
-  (* parsetest.sml *)
+
+  (* Lexer *)
+  tiger.lex
+  
+  (* Parser *)
   tiger.grm
   absyn.sml
+  parse.sml
 
+  (* Semantic Analysis *)
   table.sig
   table.sml
+  
   symbol.sml
-  parse.sml
-  prabsyn.sml
+
+  semant.sig
+  semant.sml
+
+  types.sml
+  translate.sml
+
+  env.sig
+  env.sml

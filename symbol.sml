@@ -1,4 +1,4 @@
-(* A module to turn strings into symbols. *)
+(* A module that implements a symbol table. *)
 
 
 signature SYMBOL =
