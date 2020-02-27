@@ -183,43 +183,15 @@ LetExp([
 
 ### Musical Tiger
 
-Our compiler generates sound output as it progresses. This feature is still in its
-early stages, but eventually, the plan is to have each stage of the compilation 
-process emit its own musical background track-- shifting keys/chords in a 
-progression as we climb up and down Compiler Mountain-- and each token or node
-or instruction emitting its own specific note in fast succession. Think dial-up
-modem connection noise.
+We had an idea to implement a musical compiler that produces sound output
+relevant to each stage of the compilation process as it runs. Upon realizing
+the sheer stupidity of this idea, it has been quarantined to its own branch.
+To play with this feature, checkout the branch `musical` and see its version
+of the `README.md`.
 
-Enable or disable this feature by modifying the value `ENABLE_SOUND : bool` in `parse.sml`.
-
-Using this feature requires some setup. Prerequisites include a functioning `python3` 
-environment and the python libraries `music21`, `pyaudio`, and `numpy` installed
-and available. It is possible that there may exist other prerequisites, which can 
-be installed if errors arise when using this feature. 
-
-So far, this feature has only been tested on MacOS Catalina. 
-
-#### Implementation
-
-This is implemented using a custom library named SockSound that uses a 
-TCP Socket connection from SML to send messages to a helper "server" script
-written in Python. The Python script makes use of a cross-platform sound output
-library to generate and play sounds through the device's speakers when it receives
-input through the socket from the SML client. In turn, commands to play certain
-tones are peppered throughout the compiler's driver files:
-
-```sml
-val _ = play ("d4", 1.5)
-val lexer = LrParser.Stream.streamify (Lex.makeLexer get)
-val _ = play ("f#5", 0.8)
-```
-
-The SockSound library is implemented as an SML structure in `socksound.sml`.
-
-Related files:
-
-  - `socksound.sml`
-  - `socksound.py`
+No guarantees are made that the `musical` branch will be maintained or updated
+past the state that it was as of 2020-02-27 at 12:15 PM. As of now, it should 
+not be considered part of our official submission.
 
 ## Future Compiler Features (Extra Credit)
 
