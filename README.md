@@ -6,6 +6,10 @@
   Compiler for Tiger programming language<br/>written in Standard ML for Duke <i>ECE/CS 553: Compiler Construction</i>.
 </p>
 
+# IMPORTANT NOTE
+### This is the `musical` branch and is an experiment. Please use the `master` branch for development and submissions. See `master`'s `README.md` for more info.
+
+
 ### Group Members
 
 - Jake Derry
