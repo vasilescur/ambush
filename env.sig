@@ -1,8 +1,9 @@
 signature ENV =
 sig
-  (* type access *)
+  type access
+  
   type ty
-  datatype enventry = VarEntry of {ty: ty}
+  datatype enventry = VarEntry of {ty: ty, access: unit}
                     | FunEntry of {formals: ty list, result: ty}
 
   val base_tenv : ty Symbol.table (* predefined types*)

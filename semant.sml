@@ -31,13 +31,13 @@ struct
   
 
   (* Gets the name of a type as a string *)
-  fun type_str T.NIL = "nil"
-    | type_str T.UNIT = "unit"
-    | type_str T.INT = "int"
-    | type_str T.STRING = "string"
-    | type_str T.NAME (sym, _) = "name of " ^ S.name sym
-    | type_str T.ARRAY (ty, _) = "array of " ^ type_str ty
-    | type_str T.RECORD (_, _) = "record"
+  fun type_str (T.NIL) = "nil"
+    | type_str (T.UNIT) = "unit"
+    | type_str (T.INT) = "int"
+    | type_str (T.STRING) = "string"
+    | type_str (T.NAME (sym, _)) = "name of " ^ S.name sym
+    | type_str (T.ARRAY (ty, _)) = "array of " ^ type_str ty
+    | type_str (T.RECORD (_, _)) = "record"
 
   (* Gets the *actual* type from NAME or ARRAY *)
   fun actual_ty (ty, pos) = 
@@ -60,27 +60,45 @@ struct
   type env = {tenv: tenv, venv: venv}
   val base_env : env = {tenv=Env.base_tenv, venv=Env.base_venv}
 
-  fun transExp(venv, tenv) =
+  fun transDec (venv, tenv, A.VarDec {name, escape, typ=NONE, init, pos}) = 
+      let val {exp, ty : E.ty} = (transExp(venv, tenv)) init
+        in {tenv=tenv,
+            venv=S.enter(venv,name,E.VarEntry{ty = ty, access = ()})}
+        end
+    | transDec (venv, tenv, A.TypeDec ({name, ty, pos}::more)) = {tenv=tenv, venv=venv} (* TODO add type to tenv *)
+    | transDec (venv, tenv, A.TypeDec []) = {tenv=tenv, venv=venv}
+    | transDec (venv, tenv, A.FunctionDec ({name, params, result, body, pos}::more)) = {tenv=tenv, venv=venv} (* TODO add function to venv *)
+    | transDec (venv, tenv, A.FunctionDec []) = {tenv=tenv, venv=venv}
+    | transDec (venv, tenv, _) = {tenv=tenv, venv=venv}
+  and transExp(venv, tenv) =
     let val env : env = {venv = venv, tenv = tenv}
         fun trexp (A.OpExp {left, oper, right, pos}) =
                     (checkInt(trexp left, pos);
                     checkInt(trexp right, pos);
                     {exp=(), ty=Types.INT})
           | trexp (A.VarExp (var)) = trvar var
-          | trexp (A.LetExp ({decs, body, pos})) = 
+          | trexp (A.LetExp ({decs, body, pos})) =
               let
-                  val letEnv = transDecs(venv,tenv,decs)
+                fun transDecs (venv, tenv, dec::decs) = 
+                  let
+                    val letEnv = transDec(venv, tenv, dec)
+                  in
+                    transDecs(#venv letEnv, #tenv letEnv, decs)
+                  end
+                  | transDecs (venv, tenv, []) = {venv = venv, tenv= tenv}
+
+                val letEnv = transDecs(venv, tenv, decs)
               in
-                {exp=(), ty=transExp(letEnv.venv, letEnv.tenv) body}
+                transExp(#venv letEnv, #tenv letEnv) body
               end
           | trexp (_) = (err 0 "EXPRESSION UNSUPPORTED: NEEDS TO BE IMPLEMENTED";
                     {exp=(), ty=Types.NIL})
         and trvar (A.SimpleVar (id, pos)) =
-          (case S.lookup (venv, id)
+          (case S.look (venv, id)
            of   SOME (E.VarEntry {access, ty}) => {exp = (),
                                                    ty = actual_ty (ty, pos)}
               | SOME (_) => (err pos "expected variable, got function"; err_result)
-              | NONE => (err pos "unknown variable: " ^ S.name id; err_result))
+              | NONE => (err pos ("unknown variable: " ^ S.name id); err_result))
           | trvar (A.FieldVar (v, id, pos)) = 
               let val {exp, ty} = trvar v
               in  case ty of
@@ -102,19 +120,9 @@ struct
                     | t => type_err ("array", type_str t, pos)
               end
         
-    in  trexp
+    in trexp
     end
-
-    fun transDec (venv, tenv, A.VarDec{name, typ=NONE, init,...}) = 
-        let val {exp, ty} = (transExp(venv, tenv)) init
-          in {tenv=tenv,
-              venv=S.enter(venv,name,E.VarEntry{ty=ty})}
-          end
-      | transDec (venv, tenv, A.TypeDec[{name,ty}]) = 
-          {venv=venv,
-           tenv=S.enter(tenv, name, transTy(tenv,ty))}
-     (* Also need function declarations here. Book has code for 
-       non-recursive functions, pg 17/21, ch5*)
+    and transTy (tenv, _) = T.UNIT (* TODO: Need to be implemented! *)
 
   (* transProg : Absyn.exp -> unit *)
   fun transProg (absyn : Absyn.exp) : unit =
