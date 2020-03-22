@@ -17,6 +17,7 @@ Group is
   (* Parser *)
   tiger.grm
   absyn.sml
+  prabsyn.sml
   parse.sml
 
   (* Semantic Analysis *)

@@ -65,12 +65,23 @@ struct
         in {tenv=tenv,
             venv=S.enter(venv,name,E.VarEntry{ty = ty, access = ()})}
         end
+    | transDec (venv, tenv, A.VarDec {name, escape, typ=SOME(symbol, posType), init, pos}) = 
+      let val {exp, ty} = (transExp(venv, tenv)) init
+          val eTyp = S.look(tenv, symbol)
+      in case eTyp of
+         NONE => (err posType "Unrecognized type"; {tenv=tenv,
+            venv=S.enter(venv,name,E.VarEntry{ty = ty, access = ()})})
+       | SOME(tTyp) => {tenv=tenv,
+            venv=S.enter(venv,name,E.VarEntry{ty = tTyp, access = ()})}
+      end
     | transDec (venv, tenv, A.TypeDec ({name, ty, pos}::more)) = {tenv=tenv, venv=venv} (* TODO add type to tenv *)
     | transDec (venv, tenv, A.TypeDec []) = {tenv=tenv, venv=venv}
     | transDec (venv, tenv, A.FunctionDec ({name, params, result, body, pos}::more)) = {tenv=tenv, venv=venv} (* TODO add function to venv *)
     | transDec (venv, tenv, A.FunctionDec []) = {tenv=tenv, venv=venv}
-    | transDec (venv, tenv, _) = {tenv=tenv, venv=venv}
-  and transExp(venv, tenv) =
+    (* | transDec (venv, tenv, _) = let
+                                 in print "extra reached\n"; {tenv=tenv, venv=venv}
+                                 end *)
+    and transExp(venv, tenv) =
     let val env : env = {venv = venv, tenv = tenv}
         fun trexp (A.OpExp {left, oper, right, pos}) =
                     (checkInt(trexp left, pos);
@@ -79,11 +90,11 @@ struct
           | trexp (A.VarExp (var)) = trvar var
           | trexp (A.LetExp ({decs, body, pos})) =
               let
-                fun transDecs (venv, tenv, dec::decs) = 
+                fun transDecs (venv, tenv, dec::decs) =
                   let
                     val letEnv = transDec(venv, tenv, dec)
                   in
-                    transDecs(#venv letEnv, #tenv letEnv, decs)
+                    transDecs (#venv letEnv, #tenv letEnv, decs)
                   end
                   | transDecs (venv, tenv, []) = {venv = venv, tenv= tenv}
 
@@ -119,8 +130,11 @@ struct
                                         end
                     | t => type_err ("array", type_str t, pos)
               end
-        
-    in trexp
+          fun printTrexp (exp: A.exp) = 
+            let val _ = PrintAbsyn.print (TextIO.stdOut, exp); 
+            in trexp exp
+            end
+    in printTrexp
     end
     and transTy (tenv, _) = T.UNIT (* TODO: Need to be implemented! *)
 
