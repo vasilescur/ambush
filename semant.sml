@@ -56,6 +56,12 @@ struct
   fun checkTypesEq (ty1, ty2, pos, errMsg) = if (Types.eq (ty1, ty2))
                                              then ()
                                              else (err pos errMsg)
+
+  fun findType (typ, tenv) = let val optType = S.look (tenv, typ)
+                             in case optType of 
+                                  NONE => T.BOTTOM
+                                | SOME(found) => found
+                             end
     
   type env = {tenv: tenv, venv: venv}
   val base_env : env = {tenv=Env.base_tenv, venv=Env.base_venv}
@@ -127,8 +133,28 @@ struct
                                   
                               end
                   end
-          val newVenv = List.foldl addFuncSig venv functions
-        in {tenv=tenv, venv=newVenv}
+            fun transFunDec ({name, params, result, body, pos}, {tenv, venv}) = 
+                  let fun paramToFormal ({name, escape, typ, pos}, formals) = 
+                            let val optType = S.look (tenv, typ)
+                                val formal = case optType of
+                                               NONE => T.BOTTOM
+                                             | SOME (formalType) => formalType
+                            in formal::formals
+                            end
+                      fun addParam ({name, escape, typ, pos}, {tenv, venv}) = 
+                            let val paramType = findType (typ, tenv)
+                                val newVenv = S.enter (venv, name, E.VarEntry {ty=paramType, access=()})
+                            in {tenv=tenv, venv=newVenv}
+                            end
+                      val formals = List.foldl paramToFormal [] params
+                      val newVenv = #venv (List.foldl addParam {tenv=tenv, venv=venv} params)
+                      val bodyType = transExp (newVenv, tenv) body
+                  in case result of 
+                      NONE => {tenv=tenv, venv= S.enter (venv, name, E.FunEntry {formals=formals, result= #ty bodyType})}
+                    | SOME (resultSym, resultPos) => (checkTypesEq (#ty bodyType, findType (resultSym, tenv), resultPos, "Function return type does not match body type check"); {tenv=tenv, venv=venv})
+                  end
+            val newVenv = List.foldl addFuncSig venv functions
+        in {tenv=tenv, venv= #venv (List.foldl transFunDec {tenv=tenv, venv=newVenv} functions)}
         end
     
     and transExp(venv, tenv) = 
