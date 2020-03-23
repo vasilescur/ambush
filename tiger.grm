@@ -98,7 +98,7 @@ program: exp                          (exp)
 (* Multiple declarations *)
 decs: 
       (* empty *)       (nil)
-  |   dec decs          (decs @ [dec])
+  |   dec decs          ([dec] @ decs)
 
 dec:
       vardec                   (A.VarDec vardec)
@@ -107,7 +107,7 @@ dec:
 
 tydecs: 
       tydec         ([tydec])
-  |   tydecs tydec  (tydecs @ [tydec])
+  |   tydecs tydec  ([tydec] @ tydecs)
 
 tydec: 
       TYPE ID EQ ty                   ({name=Symbol.symbol ID, ty=ty, pos=TYPEleft})
@@ -148,7 +148,7 @@ fundec:
 
 fundecs:
       fundec                          ([fundec])
-  |   fundecs fundec                  (fundecs @ [fundec])
+  |   fundecs fundec                  ([fundec] @ fundecs)
 
 
 (* L-Values are locations that can be read/assigned *)

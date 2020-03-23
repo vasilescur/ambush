@@ -700,7 +700,7 @@ end
 MlyValue.dec dec1, dec1left, _)) :: rest671)) => let val  result = 
 MlyValue.decs (fn _ => let val  (dec as dec1) = dec1 ()
  val  (decs as decs1) = decs1 ()
- in (decs @ [dec])
+ in ([dec] @ decs)
 end)
  in ( LrTable.NT 4, ( result, dec1left, decs1right), rest671)
 end
@@ -738,7 +738,7 @@ MlyValue.tydecs tydecs1, tydecs1left, _)) :: rest671)) => let val
 result = MlyValue.tydecs (fn _ => let val  (tydecs as tydecs1) = 
 tydecs1 ()
  val  (tydec as tydec1) = tydec1 ()
- in (tydecs @ [tydec])
+ in ([tydec] @ tydecs)
 end)
  in ( LrTable.NT 10, ( result, tydecs1left, tydec1right), rest671)
 end
@@ -875,7 +875,7 @@ end
  result = MlyValue.fundecs (fn _ => let val  (fundecs as fundecs1) = 
 fundecs1 ()
  val  (fundec as fundec1) = fundec1 ()
- in (fundecs @ [fundec])
+ in ([fundec] @ fundecs)
 end)
  in ( LrTable.NT 13, ( result, fundecs1left, fundec1right), rest671)
 

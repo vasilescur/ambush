@@ -10,6 +10,7 @@ struct
           | ARRAY of ty * unique
           | NAME of Symbol.symbol * ty option ref
           | UNIT
+          | BOTTOM
 
   fun eq (INT, INT) = true
     | eq (STRING, STRING) = true
