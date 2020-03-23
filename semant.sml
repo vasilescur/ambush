@@ -134,9 +134,9 @@ struct
     and transExp(venv, tenv) = 
     let val env : env = {venv = venv, tenv = tenv}
         fun trexp (A.IntExp (int)) = {exp=(), ty=T.INT}
+          | trexp (A.StringExp (string)) = {exp=(), ty=T.STRING}
+          | trexp (A.NilExp) = {exp=(), ty=T.NIL}
            (* TODO: EXPRESSIONS from absyn.sml that are missing--
-               NilExp
-               StringExp
                CallExp
                RecordExp
                SeqExp
