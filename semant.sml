@@ -172,6 +172,14 @@ struct
                ForExp
                BreakExp
             *)
+          | trexp (A.CallExp ({func, args, pos})) = {exp=(), ty=T.NIL}
+          | trexp (A.RecordExp ({fields, typ, pos})) = {exp=(), ty=T.NIL}
+          | trexp (A.SeqExp (list)) = {exp=(), ty=T.NIL}
+          | trexp (A.AssignExp ({var, exp, pos})) = {exp=(), ty=T.NIL}
+          | trexp (A.IfExp ({test, then', else', pos})) = {exp=(), ty=T.NIL}
+          | trexp (A.WhileExp ({test, body, pos})) = {exp=(), ty=T.NIL}
+          | trexp (A.ForExp ({var, escape, lo, hi, body, pos})) = {exp=(), ty=T.NIL}
+          | trexp (A.BreakExp (pos)) = {exp=(), ty=T.NIL}
           | trexp (A.OpExp {left, oper, right, pos}) =
                     (checkInt(trexp left, pos);
                     checkInt(trexp right, pos);
