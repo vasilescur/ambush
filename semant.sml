@@ -295,11 +295,7 @@ struct
                                         end
                     | t => type_err ("array", type_str t, pos)
               end
-          fun printTrexp (exp: A.exp) = 
-            let val _ = PrintAbsyn.print (TextIO.stdOut, exp); 
-            in trexp exp
-            end
-    in printTrexp
+    in trexp
     end
 
   (* transProg : Absyn.exp -> unit *)
