@@ -38,6 +38,7 @@ struct
     | type_str (T.NAME (sym, _)) = "name of " ^ S.name sym
     | type_str (T.ARRAY (ty, _)) = "array of " ^ type_str ty
     | type_str (T.RECORD (_, _)) = "record"
+    | type_str (T.BOTTOM) = "bottom"
 
   (* Gets the *actual* type from NAME or ARRAY *)
   fun actual_ty (ty, pos) = 
@@ -81,7 +82,11 @@ struct
             venv=S.enter(venv,name,E.VarEntry{ty=tTyp, access=()})}
       end
     | transDec (venv, tenv, A.TypeDec (types)) =
-        let fun addName({name, ty, pos}, tenv) = S.enter(tenv, name, T.BOTTOM)
+        let fun checkAbstract ({name, ty, pos}, check) = case (ty) of
+                                              A.NameTy (symbol, pos) => check
+                                            | A.RecordTy (fields) => false
+                                            | A.ArrayTy (symbol, pos) => false
+            fun addName ({name, ty, pos}, tenv) = S.enter(tenv, name, T.BOTTOM)
             fun transTypeDec ({name, ty, pos}, tenv) = case ty of
                                                     A.NameTy (symbol, pos)  => 
                                                       let val optType = S.look(tenv, symbol)
@@ -104,7 +109,11 @@ struct
                                                           NONE => (err pos "Unrecognized type"; S.enter (tenv, name, T.ARRAY(T.BOTTOM, ref ())))
                                                         | SOME(arrayType) => S.enter(tenv, name, T.ARRAY (arrayType, ref ()))
                                                       end
-            val newTenv = (List.foldl addName tenv types)
+            val {name, ty, pos}::more = types
+            val newTenv = ((if (List.foldl checkAbstract true types)
+                            then err pos "No concrete type declared in recursive type declaration"
+                            else ());
+                            List.foldl addName tenv types)
         in
           {tenv=List.foldl transTypeDec newTenv types, venv=venv}
         end
