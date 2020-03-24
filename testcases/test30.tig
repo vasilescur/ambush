@@ -1,6 +1,6 @@
 /* synonyms are fine */
 
-let 
+let
 		type a = array of int
 		type b = a
 
