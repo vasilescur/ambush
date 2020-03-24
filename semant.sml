@@ -191,8 +191,9 @@ struct
                   val optType = S.look (tenv, typ)
               in case optType of
                   NONE => (err pos "Unrecognized type of array"; {exp=(), ty=T.ARRAY(#ty (trexp init), ref ())})
-                | SOME(arrayType) => (checkTypesEq(arrayType, #ty (trexp init), pos, "Initialized with incorrect type"); 
-                                      {exp=(), ty=T.ARRAY(arrayType, ref ())})
+                | SOME(T.ARRAY(ty, _)) => (checkTypesEq(ty, #ty (trexp init), pos, "Initialized with incorrect type expected " 
+                                                                                  ^ type_str (ty) ^ " got " ^ type_str (#ty (trexp init))); 
+                                      {exp=(), ty=T.ARRAY(ty, ref ())})
               end
           | trexp (A.LetExp ({decs, body, pos})) =
               let fun transDecs (venv, tenv, dec::decs) =
