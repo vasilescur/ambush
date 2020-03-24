@@ -171,23 +171,75 @@ struct
         fun trexp (A.IntExp (int)) = {exp=(), ty=T.INT}
           | trexp (A.StringExp (string)) = {exp=(), ty=T.STRING}
           | trexp (A.NilExp) = {exp=(), ty=T.NIL}
-           (* TODO: EXPRESSIONS from absyn.sml that are missing--
-               CallExp
-               RecordExp
-               SeqExp
-               AssignExp
-               IfExp
-               WhileExp
-               ForExp
-               BreakExp
-            *)
-          | trexp (A.CallExp ({func, args, pos})) = {exp=(), ty=T.NIL}
-          | trexp (A.RecordExp ({fields, typ, pos})) = {exp=(), ty=T.NIL}
-          | trexp (A.SeqExp (list)) = {exp=(), ty=T.NIL}
-          | trexp (A.AssignExp ({var, exp, pos})) = {exp=(), ty=T.NIL}
-          | trexp (A.IfExp ({test, then', else', pos})) = {exp=(), ty=T.NIL}
-          | trexp (A.WhileExp ({test, body, pos})) = {exp=(), ty=T.NIL}
-          | trexp (A.ForExp ({var, escape, lo, hi, body, pos})) = {exp=(), ty=T.NIL}
+          | trexp (A.CallExp ({func, args, pos})) = 
+              let fun checkArgs (formal::formals, arg::args) = 
+              checkTypesEq (formal, #ty (trexp arg), pos, "Argument does not match function signature")
+                  val optFunc = S.look (venv, func)
+                  val returnType = case optFunc of 
+                                NONE => (err pos "Function undefined";
+                                         T.BOTTOM)
+                              | SOME (entry) => case entry of 
+                                              E.FunEntry ({formals, result}) => result
+                                            | E.VarEntry ({ty, access}) => (err pos "Function undefined";
+                                                                            T.BOTTOM)
+                  val checkArgs = case optFunc of 
+                                NONE => ()
+                              | SOME (entry) => case entry of 
+                                              E.FunEntry ({formals, result}) => (checkArgs (formals, args))
+                                            | E.VarEntry ({ty, access}) => (err pos "Function undefined")
+              in {exp=(), ty=returnType}
+              end
+          | trexp (A.RecordExp ({fields, typ, pos})) = 
+              let val (reqFields, recordType) = case (S.look (tenv, typ)) of
+                                    NONE => (err pos "Record undefined"; ([], T.BOTTOM))
+                                  | SOME (T.RECORD (reqFields, unique)) => (reqFields, T.RECORD (reqFields, unique))
+                  fun checkFields ([], []) = ()
+                    | checkFields ([], reqFields) = (err pos "Not enough fields for record type")
+                    | checkFields (fields, []) = (err pos "Too many fields for record type")
+                    | checkFields ((sym, exp, pos)::fields, (reqSym, reqTy)::reqFields) = 
+                        let val checkSym = if (sym = reqSym)
+                                           then ()
+                                           else (err pos "Field names do not match (make sure record fields are in the same order)")
+                            val checkTyp = checkTypesEq (#ty (trexp exp), reqTy, pos, "Field types do not match")
+                        in checkFields (fields, reqFields)
+                        end 
+              in (checkFields (fields, reqFields) ; {exp=(), ty=recordType})
+              end
+          | trexp (A.SeqExp (list)) = 
+              let fun checkExp ((exp, pos), seqTy) = #ty (trexp exp)
+                  val checkExps = List.foldl checkExp T.NIL list
+              in {exp=(), ty=checkExps}
+              end
+          | trexp (A.AssignExp ({var, exp, pos})) = 
+              let val _ = checkTypesEq (#ty (trvar var), #ty (trexp exp), pos, "Assignment mismatch")
+              in {exp=(), ty=T.NIL}
+              end
+          | trexp (A.IfExp ({test, then', else', pos})) = 
+                let val thenType = #ty (trexp then')
+                    val testCheck = checkInt (trexp test, pos)
+                    val sameCheck = case else' of
+                                      NONE => ()
+                                    | SOME (elseExp) => checkTypesEq (thenType,
+                                                                      #ty (trexp elseExp),
+                                                                      pos,
+                                                                      "Type of then and else do not match")
+                in {exp=(), ty=thenType}
+                end
+          | trexp (A.WhileExp ({test, body, pos})) = 
+                let val testCheck = checkInt ((trexp test), pos)
+                    val testBody = checkTypesEq (#ty (trexp body), T.NIL, pos,
+                                                 "While body does not evaluate to nil")
+                in {exp=(), ty=T.NIL}
+                end
+          | trexp (A.ForExp ({var, escape, lo, hi, body, pos})) = 
+                let val checkLo = checkInt (trexp lo, pos)
+                    val checkHi = checkInt (trexp hi,pos)
+                    val checkBody = checkTypesEq (#ty ((transExp (S.enter (venv, var, 
+                                                            E.VarEntry {ty=T.INT, access=()}), tenv)) body), 
+                                                  T.NIL, pos, "For body does not evaluate to nil")
+
+                in {exp=(), ty=T.NIL}
+                end
           | trexp (A.BreakExp (pos)) = {exp=(), ty=T.NIL}
           | trexp (A.OpExp {left, oper, right, pos}) =
                     (checkInt(trexp left, pos);
@@ -202,6 +254,7 @@ struct
                 | SOME(T.ARRAY(ty, _)) => (checkTypesEq(ty, #ty (trexp init), pos, "Initialized with incorrect type expected " 
                                                                                   ^ type_str (ty) ^ " got " ^ type_str (#ty (trexp init))); 
                                       {exp=(), ty=T.ARRAY(ty, ref ())})
+                | SOME(_) => (err pos "Not an array type"; {exp=(), ty=T.BOTTOM})
               end
           | trexp (A.LetExp ({decs, body, pos})) =
               let fun transDecs (venv, tenv, dec::decs) =
@@ -216,8 +269,6 @@ struct
               in
                 transExp(#venv letEnv, #tenv letEnv) body
               end
-          | trexp (_) = (err 0 "EXPRESSION UNSUPPORTED: NEEDS TO BE IMPLEMENTED";
-                    {exp=(), ty=Types.NIL})
         and trvar (A.SimpleVar (id, pos)) =
           (case S.look (venv, id)
            of   SOME (E.VarEntry {access, ty}) => {exp = (),
@@ -250,7 +301,6 @@ struct
             end
     in printTrexp
     end
-    and transTy (tenv, _) = T.UNIT (* TODO: Need to be implemented! *)
 
   (* transProg : Absyn.exp -> unit *)
   fun transProg (absyn : Absyn.exp) : unit =
