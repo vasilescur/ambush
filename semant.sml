@@ -1,16 +1,18 @@
-structure Semant : SEMANT =
+functor Semant (Translator : TRANSLATE) : SEMANT =
 struct
     (* Shortcuts *)
   structure A = Absyn
   structure E = Env
   structure S = Symbol
   structure T = Types 
-  structure R = Translate
+  structure R = Translator
+
+  type exp = R.exp
 
   type venv = E.enventry S.table
   type tenv = E.ty S.table
 
-  type expty = {exp: R.exp, ty: T.ty}
+  type expty = {exp: unit, ty: T.ty}
 
   (* Return value for cases where type checking failed *)
   val err_result = {exp = () (*R.errexp*), ty = T.NIL}
@@ -22,7 +24,7 @@ struct
     ((err pos ("expected " ^ exp ^ ", found " ^ act)); 
      err_result)
 
-  (* 
+  (*
   val transVar: venv * tenv * Absyn.var -> expty
   val transExp: venv * tenv * Absyn.exp -> expty
   val transDec: venv * tenv * Absyn.dec -> {venv: venv, tenv: tenv}

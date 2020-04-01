@@ -30,7 +30,19 @@ Group is
   semant.sml
 
   types.sml
-  translate.sml
 
   env.sig
   env.sml
+
+  (* IR *)
+  translate.sig
+  translate.sml
+
+  temp.sig
+  temp.sml
+
+  tree.sml
+  printtree.sml
+
+  frame.sig
+  mipsframe.sml

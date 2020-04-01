@@ -1,6 +1,7 @@
 structure Env : ENV =
 struct
   type access = unit
+  type level = unit
   type ty = Types.ty
 
   datatype enventry = VarEntry of {ty: ty, access: unit}

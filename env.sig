@@ -1,6 +1,7 @@
 signature ENV =
 sig
   type access
+  type level
   
   type ty
   datatype enventry = VarEntry of {ty: ty, access: unit}
