@@ -57,7 +57,7 @@ struct
     | unNx (c) = unNx (Ex (unEx (c)))
 
   fun baseLevel () = TOPLEVEL
-  fun nextLevel (currentLevel, label, formals) = NONTOP ({unique = () ref, parent=currentLevel, frame=F.newFrame ({name=label, formals=formals})})
+  fun nextLevel (currentLevel, label, formals) = NONTOP ({unique = ref (), parent=currentLevel, frame=F.newFrame ({name=label, formals=formals})})
 
   fun intIR (x) = Ex (T.CONST x)
   fun stringIR (literal) =
@@ -65,7 +65,7 @@ struct
       fun checkFragmentLiteral(fragment) = 
         case fragment of 
             F.PROC(_) => false
-          | F.STRING(label', literal') => String.compare (litearl', literal) = EQUAL
+          | F.STRING(label', literal') => String.compare (literal', literal) = EQUAL
       fun generateFragmentLabel() =
         case List.find checkFragmentLiteral (!fragList) of
             SOME (F.STRING (label', literal')) => label'
@@ -80,10 +80,25 @@ struct
     end
 
   fun nilIR () = Ex (T.CONST 0)
-  fun callIR (func, args) =
-    let
-      bindings
-    in
-      body
-    end
+
+  (* Follow static links *)
+  fun followSLs TOPLEVEL TOPLEVEL guess = (Err.error 0 "Failed to follow SLs"; guess)
+              | followSLs TOPLEVEL _ guess = (Err.error 0 "Failed to follow SLs"; guess)
+              | followSLs _ TOPLEVEL guess = (Err.error 0 "Failed to follow SLs"; guess)
+              | followSLs (declevel as NONTOP{unique = uniqdec, parent = _, frame = _}) 
+                          (uselevel as NONTOP{unique = uniquse, parent = useparent, frame = _}) guess =
+                    if    uniqdec = uniquse
+                    then  guess
+                    else  followSLs declevel useparent (Tree.MEM guess)
+
+
+  fun callIR (TOPLEVEL, calllevel, label, args) = Ex (Tree.TEMP F.FP)
+    | callIR (declevel as NONTOP{unique, parent, frame}, calllevel, label, args) =
+      let
+          val sl = followSLs parent calllevel (Tree.TEMP F.FP)
+          val unExedArgs = map unEx args
+      in
+          Ex (Tree.CALL (Tree.NAME label, sl :: unExedArgs))
+      end
+    
 end

@@ -19,9 +19,4 @@ sig
   val allocateLocal : frame -> bool -> access 
 
   val externalCall : string * Tree.exp list -> Tree.exp 
-  
-  (* entry exit *)
-
-  val wordSize: int
-  val exp : Env.access -> Tree.exp -> Tree.exp
 end

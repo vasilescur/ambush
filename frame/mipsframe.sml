@@ -1,14 +1,15 @@
-structure T = TREE 
+structure T = Tree 
 structure Err = ErrorMsg
 
 structure MIPSFrame : FRAME =
 struct
 
   datatype access = 
-      InFrame of int
-    | InRegister of Temp.temp
+      InFrame of int 
+    | InReg of Temp.temp
 
-  (* type frame = {name, formals, } *)
+  type frame = {name: Temp.label, formals: access list,
+                numLocals: int ref, curOffset: int ref}
 
   datatype frag =
       PROC of {body: Tree.stm, frame: frame} 
@@ -19,21 +20,50 @@ struct
   val wordSize = 4 
   val argRegisters = 4
 
-  fun exp (frameaccess, frameaddress) =
-    case frameaccess of 
-        InFrame offset => T.MEM (T.BINOP (T.PLUS, frameaddress, T.CONST offset))
-      | InRegister temp => T.TEMP (temp)
+  (* Getters *)
+  fun name {name = name, formals = _, numLocals = _, curOffset = _} = name
+  fun formals {name = _, formals = formals, numLocals = _, curOffset = _} = formals
 
-  fun newFrame ({name, formals}) = 
-    let fun allocateArgs (allocs, arg::args, offset, argDepth) = 
-          if arg (* escapes *) then 
-            allocateArgs((InFrame offset)::allocs,args, offset + wordSize, argDepth + 1)
-          else if argDepth > argRegisters then
-                 allocateArgs((InFrame offset)::allocs,args, offset + wordSize, argDepth + 1)
-               else (* store in frame *) 
-                 allocateArgs((InRegister Temp.newtemp ())::allocs,args, offset + wordSize, argDepth + 1)
-    in
-      {name=name, formals=allocateArgs ([], formals, 0, 0)}
-    end
+
+
+  fun allocateLocal frame' escape = 
+        let
+            fun incrementNumLocals {name=_, formals=_, numLocals=x, curOffset=_} = x := !x + 1
+            fun incrementOffset {name=_, formals=_, numLocals=_, curOffset=x} = x := !x - wordSize
+            fun getOffsetValue {name=_, formals=_, numLocals=_, curOffset=x} = !x
+        in
+            incrementNumLocals frame';
+            case escape of
+                true => (incrementOffset frame'; InFrame(getOffsetValue frame'))
+              | false => InReg(Temp.newtemp())
+        end
+
+  fun exp (fraccess, frameaddr) = 
+        case fraccess of
+            InFrame offset => Tree.MEM(Tree.BINOP(Tree.PLUS, frameaddr, Tree.CONST offset))
+          | InReg temp => Tree.TEMP(temp)
+
+  fun newFrame {name, formals} = 
+        let
+            fun allocateFormals(offset, [], allocList, numRegs) = allocList
+              | allocateFormals(offset, curFormal::l, allocList, numRegs) = 
+                  (
+                  case curFormal of
+                       true => allocateFormals(offset + wordSize, l, (InFrame offset)::allocList, numRegs)
+                     | false => 
+                         if numRegs < 4
+                         then allocateFormals(offset, l, (InReg(Temp.newtemp()))::allocList, numRegs + 1)
+                         else allocateFormals(offset + wordSize, l, (InFrame offset)::allocList, numRegs)
+                  )
+        in
+            {name=name, formals=allocateFormals(0, formals, [], 0),
+            numLocals=ref 0, curOffset=ref 0}
+        end
+
+
+  fun externalCall (s, args) =
+      Tree.CALL(Tree.NAME(Temp.namedlabel s), args)
+
+  fun procEntryExit1(frame', stm') = stm'
 
 end

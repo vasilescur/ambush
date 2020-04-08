@@ -66,7 +66,7 @@ struct
                              end
     
   type env = {tenv: tenv, venv: venv}
-  val base_env : env = {tenv=Env.base_tenv, venv=Env.base_venv}
+  val base_env : env = {tenv=E.base_tenv, venv=E.base_venv}
 
   fun transDec (level, venv, tenv, A.VarDec {name, escape, typ=NONE, init, pos}) = 
       let val {exp, ty : E.ty} = (transExp(venv, tenv)) init
@@ -307,8 +307,8 @@ struct
       val _ = ()
 
       (* Create the tenv and venv *)
-      val venv : venv = Env.base_venv
-      val tenv : tenv = Env.base_tenv
+      val venv : venv = E.base_venv
+      val tenv : tenv = E.base_tenv
 
       (* Recurse through the abstract syntax tree *)
       val ir : expty = (transExp (R.baseLevel (), venv, tenv)) absyn
