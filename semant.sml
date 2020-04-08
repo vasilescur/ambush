@@ -1,18 +1,17 @@
-functor Semant (Translator : TRANSLATE) : SEMANT =
+functor Semant (R : TRANSLATE) : SEMANT =
 struct
-    (* Shortcuts *)
+  (* Shortcuts *)
   structure A = Absyn
-  structure E = Env
+  structure E = Env (R)
   structure S = Symbol
-  structure T = Types 
-  structure R = Translator
+  structure T = Types
 
   type exp = R.exp
 
   type venv = E.enventry S.table
   type tenv = E.ty S.table
 
-  type expty = {exp: unit, ty: T.ty}
+  type expty = {exp: R.exp, ty: T.ty}
 
   (* Return value for cases where type checking failed *)
   val err_result = {exp = () (*R.errexp*), ty = T.NIL}
@@ -69,12 +68,12 @@ struct
   type env = {tenv: tenv, venv: venv}
   val base_env : env = {tenv=Env.base_tenv, venv=Env.base_venv}
 
-  fun transDec (venv, tenv, A.VarDec {name, escape, typ=NONE, init, pos}) = 
+  fun transDec (level, venv, tenv, A.VarDec {name, escape, typ=NONE, init, pos}) = 
       let val {exp, ty : E.ty} = (transExp(venv, tenv)) init
         in {tenv=tenv,
             venv=S.enter(venv,name,E.VarEntry{ty = ty, access = ()})}
         end
-    | transDec (venv, tenv, A.VarDec {name, escape, typ=SOME(symbol, posType), init, pos}) = 
+    | transDec (level, venv, tenv, A.VarDec {name, escape, typ=SOME(symbol, posType), init, pos}) = 
       let val {exp, ty} = (transExp(venv, tenv)) init
           val eTyp = S.look(tenv, symbol)
       in case eTyp of
@@ -83,7 +82,7 @@ struct
        | SOME(tTyp) => {tenv=tenv,
             venv=S.enter(venv,name,E.VarEntry{ty=tTyp, access=()})}
       end
-    | transDec (venv, tenv, A.TypeDec (types)) =
+    | transDec (level, venv, tenv, A.TypeDec (types)) =
         let fun checkAbstract ({name, ty, pos}, check) = case (ty) of
                                               A.NameTy (symbol, pos) => check
                                             | A.RecordTy (fields) => false
@@ -119,7 +118,7 @@ struct
         in
           {tenv=List.foldl transTypeDec newTenv types, venv=venv}
         end
-    | transDec (venv, tenv, A.FunctionDec (functions)) = 
+    | transDec (level, venv, tenv, A.FunctionDec (functions)) = 
         let fun addFuncSig ({name, params, result, body, pos}, venv) = 
                   let fun paramToFormal ({name, escape, typ, pos}, formals) = 
                             let val optType = S.look (tenv, typ)
@@ -129,22 +128,23 @@ struct
                             in formal::formals
                             end
                       val formals = List.foldl paramToFormal [] params
+                      val newLabel = Temp.newlabel ()
                   in case result of 
-                      NONE => S.enter(venv, name, E.FunEntry {formals=formals, result=T.BOTTOM})
+                      NONE => S.enter(venv, name, E.FunEntry {level=R.nextLevel (level, newLabel, escapes), label=newLabel, formals=formals, result=T.BOTTOM})
                     | SOME (resultVal, resultPos) => 
                               let val resultTy = S.look (tenv, resultVal)
                               in case resultTy of
                                   NONE => 
                                         (err resultPos "Unrecognized type"; 
                                          S.enter (venv, name, 
-                                                  E.FunEntry {formals=formals, result=T.BOTTOM}))
+                                                  E.FunEntry {level=R.nextLevel (level, newLabel, escapes), label=newLabel, formals=formals, result=T.BOTTOM}))
                                 | SOME(resultTyVal) => 
                                         S.enter(venv, name, 
-                                                E.FunEntry {formals=formals, result=resultTyVal})
+                                                E.FunEntry {level=R.nextLevel (level, newLabel, escapes), label=newLabel, formals=formals, result=resultTyVal})
                                   
                               end
                   end
-            fun transFunDec ({name, params, result, body, pos}, {tenv, venv}) = 
+            fun transFunDec ({name, params, result, body, pos}, {tenv, venv}) =
                   let fun paramToFormal ({name, escape, typ, pos}, formals) = 
                             let val optType = S.look (tenv, typ)
                                 val formal = case optType of
@@ -160,34 +160,35 @@ struct
                       val formals = List.foldl paramToFormal [] params
                       val newVenv = #venv (List.foldl addParam {tenv=tenv, venv=venv} params)
                       val bodyType = transExp (newVenv, tenv) body
+                      val newLabel = Temp.newlabel ()
                   in case result of 
-                      NONE => {tenv=tenv, venv= S.enter (venv, name, E.FunEntry {formals=formals, result= #ty bodyType})}
+                      NONE => {tenv=tenv, venv= S.enter (venv, name, E.FunEntry {level=R.nextLevel (level, newLabel, escapes), label=newLabel, formals=formals, result= #ty bodyType})}
                     | SOME (resultSym, resultPos) => (checkTypesEq (#ty bodyType, findType (resultSym, tenv), resultPos, "Function return type does not match body type check"); {tenv=tenv, venv=venv})
                   end
             val newVenv = List.foldl addFuncSig venv functions
         in {tenv=tenv, venv= #venv (List.foldl transFunDec {tenv=tenv, venv=newVenv} functions)}
         end
     
-    and transExp(venv, tenv) = 
+    and transExp(level, venv, tenv) = 
     let val env : env = {venv = venv, tenv = tenv}
-        fun trexp (A.IntExp (int)) = {exp=(), ty=T.INT}
-          | trexp (A.StringExp (string)) = {exp=(), ty=T.STRING}
-          | trexp (A.NilExp) = {exp=(), ty=T.NIL}
+        fun trexp (A.IntExp (int)) = {exp=(intIR int), ty=T.INT}
+          | trexp (A.StringExp (string)) = {exp=(stringIR string), ty=T.STRING}
+          | trexp (A.NilExp) = {exp=(nilIR ()), ty=T.NIL}
           | trexp (A.CallExp ({func, args, pos})) = 
-              let fun checkArgs (formal::formals, arg::args) = 
-              checkTypesEq (formal, #ty (trexp arg), pos, "Argument does not match function signature")
+              let fun checkArgs (formal::formals, arg::args) =
+                    checkTypesEq (formal, #ty (trexp arg), pos, "Argument does not match function signature")
                   val optFunc = S.look (venv, func)
                   val returnType = case optFunc of 
                                 NONE => (err pos "Function undefined";
                                          T.BOTTOM)
                               | SOME (entry) => case entry of 
-                                              E.FunEntry ({formals, result}) => result
+                                              E.FunEntry ({formals, result, level, label}) => result
                                             | E.VarEntry ({ty, access}) => (err pos "Function undefined";
                                                                             T.BOTTOM)
                   val checkArgs = case optFunc of 
                                 NONE => ()
                               | SOME (entry) => case entry of 
-                                              E.FunEntry ({formals, result}) => (checkArgs (formals, args))
+                                              E.FunEntry ({formals, result, level, label}) => (checkArgs (formals, args))
                                             | E.VarEntry ({ty, access}) => (err pos "Function undefined")
               in {exp=(), ty=returnType}
               end
@@ -267,7 +268,7 @@ struct
                   end
                   | transDecs (venv, tenv, []) = {venv = venv, tenv= tenv}
 
-                val letEnv = transDecs(venv, tenv, decs)
+                val letEnv = transDecs(level, venv, tenv, decs)
               in
                 transExp(#venv letEnv, #tenv letEnv) body
               end
@@ -310,7 +311,7 @@ struct
       val tenv : tenv = Env.base_tenv
 
       (* Recurse through the abstract syntax tree *)
-      val ir : expty = (transExp (venv, tenv)) absyn
+      val ir : expty = (transExp (R.baseLevel (), venv, tenv)) absyn
 
     in
       ()

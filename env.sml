@@ -1,11 +1,13 @@
-structure Env : ENV =
+functor Env (T : Translate) : ENV =
 struct
-  type access = unit
-  type level = unit
+  type access = T.access
   type ty = Types.ty
 
-  datatype enventry = VarEntry of {ty: ty, access: unit}
-                    | FunEntry of {formals: ty list, result: ty}
+  datatype enventry = VarEntry of {ty: ty, access: access}
+                    | FunEntry of {level: Translate.level,
+                                   label: Temp.label,
+                                   formals: ty list, 
+                                   result: ty}
   
   (* Base type environment -- built in types "int" and "string" *)
   val base_tenv = Symbol.enter (
