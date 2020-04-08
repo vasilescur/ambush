@@ -12,37 +12,37 @@ Group is
   errormsg.sml
 
   (* Lexer *)
-  tiger.lex
+  lexer/tiger.lex
   
   (* Parser *)
-  tiger.grm
-  absyn.sml
-  prabsyn.sml
-  parse.sml
+  parser/tiger.grm
+  absyn/absyn.sml
+  absyn/prabsyn.sml
+  parser/parse.sml
 
   (* Semantic Analysis *)
-  table.sig
-  table.sml
+  tree/table.sig
+  tree/table.sml
   
-  symbol.sml
+  tree/symbol.sml
 
-  semant.sig
-  semant.sml
+  semant/semant.sig
+  semant/semant.sml
 
-  types.sml
+  absyn/types.sml
 
-  env.sig
-  env.sml
+  semant/env.sig
+  semant/env.sml
 
   (* IR *)
-  translate.sig
-  translate.sml
+  IR/translate.sig
+  IR/translate.sml
 
-  temp.sig
-  temp.sml
+  IR/temp.sig
+  IR/temp.sml
 
-  tree.sml
-  printtree.sml
+  tree/tree.sml
+  tree/printtree.sml
 
-  frame.sig
-  mipsframe.sml
+  frame/frame.sig
+  frame/mipsframe.sml
