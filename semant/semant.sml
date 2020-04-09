@@ -204,8 +204,10 @@ struct
                                            else (err pos "Field names do not match (make sure record fields are in the same order)")
                             val checkTyp = checkTypesEq (#ty (trexp exp), reqTy, pos, "Field types do not match")
                         in checkFields (fields, reqFields)
-                        end 
-              in (checkFields (fields, reqFields) ; {exp=R.unfinished, ty=recordType})
+                        end
+                  fun getExps ([]) = []
+                    | getExps ((sym, exp, pos)::fields) = (#exp (trexp exp))::(getExps fields)
+              in (checkFields (fields, reqFields) ; {exp=R.recordIR (getExps fields), ty=recordType})
               end
           | trexp (A.SeqExp (list)) = 
               let fun checkExp ((exp, pos)) = trexp exp
@@ -264,14 +266,16 @@ struct
                 end
           | trexp (A.VarExp (var)) = trvar var
           | trexp (A.ArrayExp {typ, size, init, pos}) =
-              let val _ = checkInt (trexp size, pos)
+              let val sizeExp = trexp size
+                  val initExp = trexp init
+                  val _ = checkInt (sizeExp, pos)
                   val optType = S.look (tenv, typ)
               in case optType of
                   NONE => (err pos "Unrecognized type of array"; {exp=R.unfinished, ty=T.ARRAY(#ty (trexp init), ref ())})
-                | SOME(T.ARRAY(ty, _)) => (checkTypesEq(ty, #ty (trexp init), pos, "Initialized with incorrect type expected " 
+                | SOME(T.ARRAY(ty, _)) => (checkTypesEq(ty, (#ty initExp), pos, "Initialized with incorrect type expected " 
                                                                                   ^ type_str (ty) ^ " got " ^ type_str (#ty (trexp init))); 
-                                      {exp=R.unfinished, ty=T.ARRAY(ty, ref ())})
-                | SOME(_) => (err pos "Not an array type"; {exp=R.unfinished, ty=T.BOTTOM})
+                                      {exp=R.arrayIR (#exp sizeExp, #exp initExp), ty=T.ARRAY(ty, ref ())})
+                | SOME(_) => (err pos "Not an array type"; {exp=R.nilIR (), ty=T.BOTTOM})
               end
           | trexp (A.LetExp ({decs, body, pos})) =
               let fun transDecs (venv, tenv, dec::decs) =

@@ -27,6 +27,8 @@ sig
   val whileIR : exp * exp * Temp.label -> exp
   val forIR : exp * exp * exp * exp * Temp.label -> exp 
   val breakIR : Temp.label -> exp
+  val recordIR : exp list -> exp
+  val arrayIR : exp * exp -> exp
 
   val newVar : unit -> exp
 

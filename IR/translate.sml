@@ -24,6 +24,9 @@ struct
   (* Nil value *)
   val NIL = Ex (T.CONST 0)
 
+  val malloc = Temp.namedlabel ("malloc")
+  val initArray = Temp.namedlabel ("initArray")
+
   fun formals TOPLEVEL = []
     | formals (currentLevel as NONTOP {unique, parent, frame}) = 
         let
@@ -189,6 +192,22 @@ struct
                                              end
 
   fun breakIR (joinLabel) = Nx (T.JUMP (T.NAME joinLabel, [joinLabel]))
+
+  fun recordIR (exps) = let val record = Temp.newtemp ()
+                            val recordSize = List.length exps
+                            fun fields ([], counter) = []
+                              | fields (exp::fexps, counter) = (T.MOVE (T.MEM (T.BINOP (T.PLUS,
+                                                                                        T.TEMP record,
+                                                                                        T.CONST (counter * F.wordSize))),
+                                                                unEx exp))::fields (fexps, counter + 1)
+                                          val head = T.MOVE (T.TEMP record,
+                                                             T.CALL (T.NAME malloc,
+                                                                     [T.CONST (recordSize * F.wordSize)]))
+                                          fun setUpRecord () = head::fields(exps, 0)
+                                      in Ex (T.ESEQ (seq (setUpRecord ()), T.TEMP record))
+                                      end
+
+  fun arrayIR (sizeExp, initExp) = Ex (T.CALL (T.NAME initArray, [unEx sizeExp, unEx initExp]))
 
   fun newVar () = Ex (T.TEMP (Temp.newtemp ()))
 
