@@ -1,5 +1,6 @@
 signature SEMANT =
 sig
   type exp
-  val transProg: Absyn.exp -> unit
+  type frag
+  val transProg: Absyn.exp -> frag list (* Tree.stm *)
 end

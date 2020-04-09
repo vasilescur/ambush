@@ -38,32 +38,31 @@ struct
               | false => InReg(Temp.newtemp())
         end
 
-  fun exp (fraccess, frameaddr) = 
-        case fraccess of
-            InFrame offset => Tree.MEM(Tree.BINOP(Tree.PLUS, frameaddr, Tree.CONST offset))
-          | InReg temp => Tree.TEMP(temp)
-
-  fun newFrame {name, formals} = 
-        let
-            fun allocateFormals(offset, [], allocList, numRegs) = allocList
-              | allocateFormals(offset, curFormal::l, allocList, numRegs) = 
-                  (
-                  case curFormal of
-                       true => allocateFormals(offset + wordSize, l, (InFrame offset)::allocList, numRegs)
-                     | false => 
-                         if numRegs < 4
-                         then allocateFormals(offset, l, (InReg(Temp.newtemp()))::allocList, numRegs + 1)
-                         else allocateFormals(offset + wordSize, l, (InFrame offset)::allocList, numRegs)
-                  )
-        in
-            {name=name, formals=allocateFormals(0, formals, [], 0),
-            numLocals=ref 0, curOffset=ref 0}
-        end
-
+  fun printFrame {name = name', formals = formals', numLocals = numLocals', curOffset = currentOffset'} =
+    (print ("FRAME <" ^ (Symbol.name name') ^ "> (" ^ Int.toString(!numLocals') ^ " locals, current offset = " ^ Int.toString(!currentOffset') ^ ")\n"))
 
   fun externalCall (s, args) =
       Tree.CALL(Tree.NAME(Temp.namedlabel s), args)
 
   fun procEntryExit1(frame', stm') = stm'
+
+  fun exp (fraccess, frameaddr) = 
+      case fraccess of
+          InFrame offset => Tree.MEM(Tree.BINOP(Tree.PLUS, frameaddr, Tree.CONST offset))
+        | InReg temp => Tree.TEMP(temp)
+
+  
+  fun nextFrame {name, formals} = 
+        let fun allocateFormals(offset, [], allocList, numRegs) = allocList
+              | allocateFormals(offset, curFormal::l, allocList, numRegs) = 
+                  case curFormal of
+                       true => allocateFormals (offset + wordSize, l, (InFrame offset)::allocList, numRegs)
+                     | false => 
+                         if   numRegs < 4
+                         then allocateFormals (offset, l, (InReg(Temp.newtemp()))::allocList, numRegs + 1)
+                         else allocateFormals (offset + wordSize, l, (InFrame offset)::allocList, numRegs)
+        in  {name=name, formals=allocateFormals(0, formals, [], 0),
+            numLocals=ref 0, curOffset=ref 0}
+        end
 
 end

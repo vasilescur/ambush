@@ -8,6 +8,8 @@ struct
 
   type exp = R.exp
 
+  type frag = R.frag
+
   type venv = E.enventry S.table
   type tenv = E.ty S.table
 
@@ -68,13 +70,13 @@ struct
   type env = {tenv: tenv, venv: venv}
   val base_env : env = {tenv=E.base_tenv, venv=E.base_venv}
 
-  fun transDec (level, venv, tenv, A.VarDec {name, escape, typ=NONE, init, pos}) = 
-      let val {exp, ty : E.ty} = (transExp(level, venv, tenv)) init
+  fun transDec (level, breakLabel, venv, tenv, A.VarDec {name, escape, typ=NONE, init, pos}) = 
+      let val {exp, ty : E.ty} = (transExp(level, breakLabel, venv, tenv)) init
         in {tenv=tenv,
             venv=S.enter(venv,name,E.VarEntry{ty = ty, access = ()})}
         end
-    | transDec (level, venv, tenv, A.VarDec {name, escape, typ=SOME(symbol, posType), init, pos}) = 
-      let val {exp, ty} = (transExp(level, venv, tenv)) init
+    | transDec (level, breakLabel, venv, tenv, A.VarDec {name, escape, typ=SOME(symbol, posType), init, pos}) = 
+      let val {exp, ty} = (transExp(level, breakLabel, venv, tenv)) init
           val eTyp = S.look(tenv, symbol)
       in case eTyp of
          NONE => (err posType "Unrecognized type"; {tenv=tenv,
@@ -82,7 +84,7 @@ struct
        | SOME(tTyp) => {tenv=tenv,
             venv=S.enter(venv,name,E.VarEntry{ty=tTyp, access=()})}
       end
-    | transDec (level, venv, tenv, A.TypeDec (types)) =
+    | transDec (level, breakLabel, venv, tenv, A.TypeDec (types)) =
         let fun checkAbstract ({name, ty, pos}, check) = case (ty) of
                                               A.NameTy (symbol, pos) => check
                                             | A.RecordTy (fields) => false
@@ -118,7 +120,7 @@ struct
         in
           {tenv=List.foldl transTypeDec newTenv types, venv=venv}
         end
-    | transDec (level, venv, tenv, A.FunctionDec (functions)) = 
+    | transDec (level, breakLabel, venv, tenv, A.FunctionDec (functions)) = 
         let fun paramsToEscapes ([], escapes) = escapes
               | paramsToEscapes ({name, escape, typ, pos}::params, escapes) = (!escape)::escapes
             fun addFuncSig ({name, params, result, body, pos}, venv) = 
@@ -161,17 +163,18 @@ struct
                             end
                       val formals = List.foldl paramToFormal [] params
                       val newVenv = #venv (List.foldl addParam {tenv=tenv, venv=venv} params)
-                      val bodyType = transExp (level, newVenv, tenv) body
+                      val bodyType = transExp (level, breakLabel, newVenv, tenv) body
                       val newLabel = Temp.newlabel ()
                   in case result of 
                       NONE => {tenv=tenv, venv= S.enter (venv, name, E.FunEntry {level=R.nextLevel (level, newLabel, paramsToEscapes (params, [])), label=newLabel, formals=formals, result= #ty bodyType})}
                     | SOME (resultSym, resultPos) => (checkTypesEq (#ty bodyType, findType (resultSym, tenv), resultPos, "Function return type does not match body type check"); {tenv=tenv, venv=venv})
+                    (* Need procedureEntryExit call? *)
                   end
             val newVenv = List.foldl addFuncSig venv functions
         in {tenv=tenv, venv= #venv (List.foldl transFunDec {tenv=tenv, venv=newVenv} functions)}
         end
     
-    and transExp(level, venv, tenv) = 
+    and transExp(level, breakLabel, venv, tenv) = 
     let val env : env = {venv = venv, tenv = tenv}
         fun trexp (A.IntExp (int)) = {exp=(R.intIR int), ty=T.INT}
           | trexp (A.StringExp (string, pos)) = {exp=(R.stringIR (string)), ty=T.STRING}
@@ -205,13 +208,18 @@ struct
               in (checkFields (fields, reqFields) ; {exp=R.unfinished, ty=recordType})
               end
           | trexp (A.SeqExp (list)) = 
-              let fun checkExp ((exp, pos), seqTy) = #ty (trexp exp)
-                  val checkExps = List.foldl checkExp T.NIL list
-              in {exp=R.unfinished, ty=checkExps}
+              let fun checkExp ((exp, pos)) = trexp exp
+                  fun getType ({ty=ty, exp=exp}) = ty
+                  fun getExp ({ty=ty, exp=exp}) = exp
+                  val seqExp = List.map checkExp list
+                  val seqExpType = List.map getType seqExp
+              in {exp=R.seqIR (List.map getExp seqExp), ty=T.NIL}
               end
           | trexp (A.AssignExp ({var, exp, pos})) = 
-              let val _ = checkTypesEq (#ty (trvar var), #ty (trexp exp), pos, "Assignment mismatch")
-              in {exp=R.unfinished, ty=T.NIL}
+              let val trVar = trvar var
+                  val trExp = trexp exp
+                  val _ = checkTypesEq (#ty trVar, #ty trExp, pos, "Assignment mismatch")
+              in {exp=R.assignIR (#exp trVar, #exp trExp), ty=T.NIL}
               end
           | trexp (A.IfExp ({test, then', else', pos})) = 
                 let val {exp=thenExp, ty=thenType} = (trexp then')
@@ -226,21 +234,28 @@ struct
                                         end
                 end
           | trexp (A.WhileExp ({test, body, pos})) = 
-                let val testCheck = checkInt ((trexp test), pos)
-                    val testBody = checkTypesEq (#ty (trexp body), T.NIL, pos,
+                let val joinLabel = Temp.newlabel ()
+                    val transExpWhile = (transExp (level, joinLabel, venv, tenv))
+                    val testTrexp = transExpWhile test
+                    val bodyTrexp = transExpWhile body
+                    val testCheck = checkInt (testTrexp, pos)
+                    val testBody = checkTypesEq (#ty bodyTrexp, T.NIL, pos,
                                                  "While body does not evaluate to nil")
-                in {exp=R.unfinished, ty=T.NIL}
+                in {exp=R.whileIR (#exp testTrexp, #exp bodyTrexp, joinLabel), ty=T.NIL}
                 end
           | trexp (A.ForExp ({var, escape, lo, hi, body, pos})) = 
-                let val checkLo = checkInt (trexp lo, pos)
-                    val checkHi = checkInt (trexp hi,pos)
-                    val checkBody = checkTypesEq (#ty ((transExp (level, S.enter (venv, var, 
-                                                            E.VarEntry {ty=T.INT, access=()}), tenv)) body), 
+                let val loTrexp = trexp lo
+                    val hiTrexp = trexp hi
+                    val joinLabel = Temp.newlabel ()
+                    val bodyTrexp = (transExp (level, joinLabel, S.enter (venv, var, E.VarEntry {ty=T.INT, access=()}), tenv)) body 
+                    val checkLo = checkInt (loTrexp, pos)
+                    val checkHi = checkInt (hiTrexp,pos)
+                    val checkBody = checkTypesEq (#ty bodyTrexp, 
                                                   T.NIL, pos, "For body does not evaluate to nil")
 
-                in {exp=R.unfinished, ty=T.NIL}
+                in {exp=R.forIR (R.newVar (), #exp loTrexp, #exp hiTrexp, #exp bodyTrexp, joinLabel), ty=T.NIL}
                 end
-          | trexp (A.BreakExp (pos)) = {exp=R.unfinished, ty=T.NIL}
+          | trexp (A.BreakExp (pos)) = {exp=R.breakIR (breakLabel), ty=T.NIL}
           | trexp (A.OpExp {left, oper, right, pos}) =
                 let
                   val leftExp = checkInt(trexp left, pos)
@@ -260,7 +275,7 @@ struct
               end
           | trexp (A.LetExp ({decs, body, pos})) =
               let fun transDecs (venv, tenv, dec::decs) =
-                      let val letEnv = transDec(level, venv, tenv, dec)
+                      let val letEnv = transDec(level, breakLabel, venv, tenv, dec)
                       in
                         transDecs (#venv letEnv, #tenv letEnv, decs)
                       end
@@ -268,7 +283,7 @@ struct
 
                 val letEnv = transDecs (venv, tenv, decs)
               in
-                transExp (level, #venv letEnv, #tenv letEnv) body
+                transExp (level, breakLabel, #venv letEnv, #tenv letEnv) body
               end
         and trvar (A.SimpleVar (id, pos)) =
           (case S.look (venv, id)
@@ -299,19 +314,22 @@ struct
     in trexp
     end
 
-  (* transProg : Absyn.exp -> unit *)
-  fun transProg (absyn : Absyn.exp) : unit =
+  fun transProg (absyn : Absyn.exp) =
     let
       val _ = ()
 
       (* Create the tenv and venv *)
       val venv : venv = E.base_venv
       val tenv : tenv = E.base_tenv
+      val mainLabel = Temp.newlabel ()
+
+      val mainLevel = R.nextLevel (R.outermost, mainLabel, [])
 
       (* Recurse through the abstract syntax tree *)
-      val ir : expty = (transExp (R.baseLevel (), venv, tenv)) absyn
+      val ir = #exp ((transExp (mainLevel, mainLabel, venv, tenv)) absyn)
 
     in
-      ()
+      R.procedureEntryExit (mainLevel, ir);
+      R.result ()
     end
 end

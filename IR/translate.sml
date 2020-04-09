@@ -9,6 +9,8 @@ struct
 
   type access = level * F.access
 
+  type frag = F.frag
+
   datatype exp = Ex of T.exp
                | Nx of T.stm
                | Cx of Temp.label * Temp.label -> T.stm
@@ -22,11 +24,22 @@ struct
   (* Nil value *)
   val NIL = Ex (T.CONST 0)
 
-  (* new level function *)
+  fun formals TOPLEVEL = []
+    | formals (currentLevel as NONTOP {unique, parent, frame}) = 
+        let
+          fun appendLevel (frameAccess, level) = (currentLevel, frameAccess) :: level
+        in
+          foldl appendLevel [] (F.formals frame)
+        end
 
-  (* formals function *)
 
-  (* allocate a local var function *)
+  fun allocateLocal level escape =
+    case level of 
+        NONTOP ({unique = unique', parent = parent', frame = frame'}) =>
+          (NONTOP ({unique = unique', parent = parent', frame = frame'}), F.allocateLocal frame' escape)
+      | TOPLEVEL => (Err.error 0 "Cannot allocate a local at top level";
+                     (outermost, F.allocateLocal (F.nextFrame {name = Temp.newlabel(), formals = []}) escape))
+
 
   val errexp = ()
   fun seq (e :: exps) = T.SEQ(e, seq exps)
@@ -58,20 +71,26 @@ struct
     | unNx (c) = unNx (Ex (unEx (c)))
 
   fun baseLevel () = TOPLEVEL
-  fun nextLevel (currentLevel, label, formals) = NONTOP ({unique = ref (), parent=currentLevel, frame=F.newFrame ({name=label, formals=formals})})
+
+  fun nextLevel (currentLevel, label, formals) = 
+    NONTOP ({unique = ref (), 
+             parent = currentLevel, 
+             frame = F.nextFrame ({name = label, formals = formals})})
 
   (* Follow static links *)
-  fun followSLs TOPLEVEL TOPLEVEL guess = (Err.error 0 "Failed to follow SLs"; guess)
-              | followSLs TOPLEVEL _ guess = (Err.error 0 "Failed to follow SLs"; guess)
-              | followSLs _ TOPLEVEL guess = (Err.error 0 "Failed to follow SLs"; guess)
-              | followSLs (declevel as NONTOP{unique = uniqdec, parent = _, frame = _}) 
-                          (uselevel as NONTOP{unique = uniquse, parent = useparent, frame = _}) guess =
-                    if    uniqdec = uniquse
-                    then  guess
-                    else  followSLs declevel useparent (Tree.MEM guess)
+  fun followSLs TOPLEVEL TOPLEVEL guess = (Err.error 0 "Failed to follow SLs"; guess)   (* Any top level --> fail *)
+    | followSLs TOPLEVEL _        guess = (Err.error 0 "Failed to follow SLs"; guess)
+    | followSLs _        TOPLEVEL guess = (Err.error 0 "Failed to follow SLs"; guess)
+    | followSLs (declevel as NONTOP{unique = uniquedec, parent = _, frame = _}) 
+                (uselevel as NONTOP{unique = uniqueuse, parent = useparent, frame = _}) 
+                guess =
+                  if   uniquedec = uniqueuse
+                  then guess
+                  else followSLs declevel useparent (Tree.MEM guess)
     
 
   fun intIR (x) = Ex (T.CONST x)
+
   fun stringIR (literal) =
     let
       fun checkFragmentLiteral(fragment) = 
@@ -108,6 +127,10 @@ struct
           Ex (Tree.CALL (Tree.NAME label, sl :: unExedArgs))
       end
 
+  fun seqIR ([]) = Ex (T.CONST 0)
+    | seqIR ([exp]) = exp 
+    | seqIR (front::seq) = Ex (Tree.ESEQ (unNx front, unEx (seqIR seq)))
+
   fun ifIR (test, thenExp, optElseExp) = 
       case optElseExp of
         SOME (elseExp) => let val trueExp = unEx thenExp
@@ -133,4 +156,58 @@ struct
                                       T.EXP condExp,
                                       T.LABEL joinLabel], T.CONST 0))
                 end
+
+  fun assignIR (var, exp) = Nx (T.MOVE (unEx var, unEx exp))
+
+  fun whileIR (test, body, joinLabel) = let val testLabel = Temp.newlabel ()
+                                            val testStm = unCx test
+                                            val bodyLabel = Temp.newlabel ()
+                                            val bodyNexp = unNx body
+                                        in Nx (seq [T.LABEL testLabel,
+                                                    testStm (bodyLabel, joinLabel),
+                                                    T.LABEL bodyLabel,
+                                                    bodyNexp,
+                                                    T.JUMP (T.NAME testLabel, [testLabel]),
+                                                    T.LABEL joinLabel])
+                                        end
+
+  fun forIR (var, lo, hi, body, joinLabel) = let val varExp = unEx var
+                                                 val loExp = unEx lo
+                                                 val hiExp = unEx hi
+                                                 val bodyNexp = unNx body
+                                                 val bodyLabel = Temp.newlabel ()
+                                                 val updateLabel = Temp.newlabel ()
+                                             in Nx (seq [T.MOVE (varExp, loExp),
+                                                         T.CJUMP (T.LE, varExp, hiExp, bodyLabel, joinLabel),
+                                                         T.LABEL bodyLabel,
+                                                         bodyNexp,
+                                                         T.CJUMP (T.LT, varExp, hiExp, updateLabel, joinLabel),
+                                                         T.LABEL updateLabel,
+                                                         T.MOVE (varExp, T.BINOP (T.PLUS, varExp, T.CONST 1)),
+                                                         T.JUMP (T.NAME bodyLabel, [bodyLabel]),
+                                                         T.LABEL joinLabel])
+                                             end
+
+  fun breakIR (joinLabel) = Nx (T.JUMP (T.NAME joinLabel, [joinLabel]))
+
+  fun newVar () = Ex (T.TEMP (Temp.newtemp ()))
+
+  fun procedureEntryExit (level', body') =
+    let val levelFrame =  (* Determine the level *)
+          case level' of 
+              TOPLEVEL => (Err.error 0 "Illegal function declaration in outermost level";
+                           F.nextFrame ({name = Temp.newlabel(), formals = []}))
+            | NONTOP ({unique = _, parent = _, frame = frame'}) => frame'
+        val trBody = unNx body'
+    in  (* Append to frag list *)
+        fragList := F.PROC ({body = trBody, frame = levelFrame}) :: (!fragList)
+    end
+
+  fun result () = !fragList
+
+  fun appendExpressionList (expressionList, body as exp') =
+    let fun createExpressionListStatement (head :: tail) = unNx (head) :: createExpressionListStatement (tail)
+          | createExpressionListStatement ([]) = []
+    in  Ex (Tree.ESEQ (seq (createExpressionListStatement expressionList), unEx (exp')))
+    end
 end

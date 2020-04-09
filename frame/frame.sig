@@ -14,9 +14,11 @@ sig
   val exp : access * Tree.exp -> Tree.exp
   val name : frame -> Temp.label
   val formals : frame -> access list
-  val newFrame : {name: Temp.label, formals: bool list} -> frame
+  val nextFrame : {name: Temp.label, formals: bool list} -> frame
 
   val allocateLocal : frame -> bool -> access 
+
+  val printFrame : frame -> unit
 
   val externalCall : string * Tree.exp list -> Tree.exp 
 end
