@@ -14,7 +14,7 @@ struct
   type expty = {exp: R.exp, ty: T.ty}
 
   (* Return value for cases where type checking failed *)
-  val err_result = {exp = () (*R.errexp*), ty = T.NIL}
+  val err_result = {exp = R.unfinished, ty = T.NIL}
 
   val err = ErrorMsg.error
 
@@ -52,8 +52,8 @@ struct
 
 
   (* Check if an expression is an integer *)
-  fun checkInt ({exp = _, ty = Types.INT}, pos) = ()
-    | checkInt ({exp = _, ty = t}, pos) = (type_err ("int", type_str t, pos); ());
+  fun checkInt ({exp = expInt, ty = Types.INT}, pos) : exp = expInt
+    | checkInt ({exp = expInt, ty = t}, pos) : exp = (type_err ("int", type_str t, pos); expInt)
 
   fun checkTypesEq (ty1, ty2, pos, errMsg) = if (Types.eq (ty1, ty2))
                                              then ()
@@ -69,12 +69,12 @@ struct
   val base_env : env = {tenv=E.base_tenv, venv=E.base_venv}
 
   fun transDec (level, venv, tenv, A.VarDec {name, escape, typ=NONE, init, pos}) = 
-      let val {exp, ty : E.ty} = (transExp(venv, tenv)) init
+      let val {exp, ty : E.ty} = (transExp(level, venv, tenv)) init
         in {tenv=tenv,
             venv=S.enter(venv,name,E.VarEntry{ty = ty, access = ()})}
         end
     | transDec (level, venv, tenv, A.VarDec {name, escape, typ=SOME(symbol, posType), init, pos}) = 
-      let val {exp, ty} = (transExp(venv, tenv)) init
+      let val {exp, ty} = (transExp(level, venv, tenv)) init
           val eTyp = S.look(tenv, symbol)
       in case eTyp of
          NONE => (err posType "Unrecognized type"; {tenv=tenv,
@@ -119,7 +119,9 @@ struct
           {tenv=List.foldl transTypeDec newTenv types, venv=venv}
         end
     | transDec (level, venv, tenv, A.FunctionDec (functions)) = 
-        let fun addFuncSig ({name, params, result, body, pos}, venv) = 
+        let fun paramsToEscapes ([], escapes) = escapes
+              | paramsToEscapes ({name, escape, typ, pos}::params, escapes) = (!escape)::escapes
+            fun addFuncSig ({name, params, result, body, pos}, venv) = 
                   let fun paramToFormal ({name, escape, typ, pos}, formals) = 
                             let val optType = S.look (tenv, typ)
                                 val formal = case optType of
@@ -130,17 +132,17 @@ struct
                       val formals = List.foldl paramToFormal [] params
                       val newLabel = Temp.newlabel ()
                   in case result of 
-                      NONE => S.enter(venv, name, E.FunEntry {level=R.nextLevel (level, newLabel, escapes), label=newLabel, formals=formals, result=T.BOTTOM})
+                      NONE => S.enter(venv, name, E.FunEntry {level=R.nextLevel (level, newLabel, paramsToEscapes (params, [])), label=newLabel, formals=formals, result=T.BOTTOM})
                     | SOME (resultVal, resultPos) => 
                               let val resultTy = S.look (tenv, resultVal)
                               in case resultTy of
                                   NONE => 
                                         (err resultPos "Unrecognized type"; 
                                          S.enter (venv, name, 
-                                                  E.FunEntry {level=R.nextLevel (level, newLabel, escapes), label=newLabel, formals=formals, result=T.BOTTOM}))
+                                                  E.FunEntry {level=R.nextLevel (level, newLabel, paramsToEscapes (params, [])), label=newLabel, formals=formals, result=T.BOTTOM}))
                                 | SOME(resultTyVal) => 
                                         S.enter(venv, name, 
-                                                E.FunEntry {level=R.nextLevel (level, newLabel, escapes), label=newLabel, formals=formals, result=resultTyVal})
+                                                E.FunEntry {level=R.nextLevel (level, newLabel, paramsToEscapes (params, [])), label=newLabel, formals=formals, result=resultTyVal})
                                   
                               end
                   end
@@ -159,10 +161,10 @@ struct
                             end
                       val formals = List.foldl paramToFormal [] params
                       val newVenv = #venv (List.foldl addParam {tenv=tenv, venv=venv} params)
-                      val bodyType = transExp (newVenv, tenv) body
+                      val bodyType = transExp (level, newVenv, tenv) body
                       val newLabel = Temp.newlabel ()
                   in case result of 
-                      NONE => {tenv=tenv, venv= S.enter (venv, name, E.FunEntry {level=R.nextLevel (level, newLabel, escapes), label=newLabel, formals=formals, result= #ty bodyType})}
+                      NONE => {tenv=tenv, venv= S.enter (venv, name, E.FunEntry {level=R.nextLevel (level, newLabel, paramsToEscapes (params, [])), label=newLabel, formals=formals, result= #ty bodyType})}
                     | SOME (resultSym, resultPos) => (checkTypesEq (#ty bodyType, findType (resultSym, tenv), resultPos, "Function return type does not match body type check"); {tenv=tenv, venv=venv})
                   end
             val newVenv = List.foldl addFuncSig venv functions
@@ -171,26 +173,20 @@ struct
     
     and transExp(level, venv, tenv) = 
     let val env : env = {venv = venv, tenv = tenv}
-        fun trexp (A.IntExp (int)) = {exp=(intIR int), ty=T.INT}
-          | trexp (A.StringExp (string)) = {exp=(stringIR string), ty=T.STRING}
-          | trexp (A.NilExp) = {exp=(nilIR ()), ty=T.NIL}
+        fun trexp (A.IntExp (int)) = {exp=(R.intIR int), ty=T.INT}
+          | trexp (A.StringExp (string, pos)) = {exp=(R.stringIR (string)), ty=T.STRING}
+          | trexp (A.NilExp) = {exp=(R.nilIR ()), ty=T.NIL}
           | trexp (A.CallExp ({func, args, pos})) = 
               let fun checkArgs (formal::formals, arg::args) =
                     checkTypesEq (formal, #ty (trexp arg), pos, "Argument does not match function signature")
+                  fun translateArg (exp) = #exp (trexp exp)
                   val optFunc = S.look (venv, func)
-                  val returnType = case optFunc of 
-                                NONE => (err pos "Function undefined";
-                                         T.BOTTOM)
+              in case optFunc of 
+                                NONE => (err pos "Function undefined"; {exp=R.nilIR (), ty=T.BOTTOM})
                               | SOME (entry) => case entry of 
-                                              E.FunEntry ({formals, result, level, label}) => result
-                                            | E.VarEntry ({ty, access}) => (err pos "Function undefined";
-                                                                            T.BOTTOM)
-                  val checkArgs = case optFunc of 
-                                NONE => ()
-                              | SOME (entry) => case entry of 
-                                              E.FunEntry ({formals, result, level, label}) => (checkArgs (formals, args))
-                                            | E.VarEntry ({ty, access}) => (err pos "Function undefined")
-              in {exp=(), ty=returnType}
+                                              E.FunEntry ({formals, result, level=funlevel, label}) => (checkArgs (formals, args); 
+                                                                                               {exp=R.callIR (funlevel, level, label, map translateArg args), ty=result})
+                                            | E.VarEntry ({ty, access}) => (err pos "Function undefined"; {exp=R.nilIR (), ty=T.BOTTOM})
               end
           | trexp (A.RecordExp ({fields, typ, pos})) = 
               let val (reqFields, recordType) = case (S.look (tenv, typ)) of
@@ -206,75 +202,77 @@ struct
                             val checkTyp = checkTypesEq (#ty (trexp exp), reqTy, pos, "Field types do not match")
                         in checkFields (fields, reqFields)
                         end 
-              in (checkFields (fields, reqFields) ; {exp=(), ty=recordType})
+              in (checkFields (fields, reqFields) ; {exp=R.unfinished, ty=recordType})
               end
           | trexp (A.SeqExp (list)) = 
               let fun checkExp ((exp, pos), seqTy) = #ty (trexp exp)
                   val checkExps = List.foldl checkExp T.NIL list
-              in {exp=(), ty=checkExps}
+              in {exp=R.unfinished, ty=checkExps}
               end
           | trexp (A.AssignExp ({var, exp, pos})) = 
               let val _ = checkTypesEq (#ty (trvar var), #ty (trexp exp), pos, "Assignment mismatch")
-              in {exp=(), ty=T.NIL}
+              in {exp=R.unfinished, ty=T.NIL}
               end
           | trexp (A.IfExp ({test, then', else', pos})) = 
-                let val thenType = #ty (trexp then')
-                    val testCheck = checkInt (trexp test, pos)
-                    val sameCheck = case else' of
-                                      NONE => ()
-                                    | SOME (elseExp) => checkTypesEq (thenType,
-                                                                      #ty (trexp elseExp),
-                                                                      pos,
-                                                                      "Type of then and else do not match")
-                in {exp=(), ty=thenType}
+                let val {exp=thenExp, ty=thenType} = (trexp then')
+                    val testExp = trexp test
+                    val testCheck = checkInt (testExp, pos)
+                in case else' of
+                      NONE => {exp=R.ifIR (#exp testExp, thenExp, NONE), ty=thenType}
+                    | SOME (elseSome) => let val {exp=elseExp, ty=elseType} = trexp elseSome
+                                        in (checkTypesEq (thenType, elseType,
+                                                      pos, "Type of then and else do not match");
+                                                      {exp=R.ifIR (#exp testExp, thenExp, SOME(elseExp)), ty=thenType})
+                                        end
                 end
           | trexp (A.WhileExp ({test, body, pos})) = 
                 let val testCheck = checkInt ((trexp test), pos)
                     val testBody = checkTypesEq (#ty (trexp body), T.NIL, pos,
                                                  "While body does not evaluate to nil")
-                in {exp=(), ty=T.NIL}
+                in {exp=R.unfinished, ty=T.NIL}
                 end
           | trexp (A.ForExp ({var, escape, lo, hi, body, pos})) = 
                 let val checkLo = checkInt (trexp lo, pos)
                     val checkHi = checkInt (trexp hi,pos)
-                    val checkBody = checkTypesEq (#ty ((transExp (S.enter (venv, var, 
+                    val checkBody = checkTypesEq (#ty ((transExp (level, S.enter (venv, var, 
                                                             E.VarEntry {ty=T.INT, access=()}), tenv)) body), 
                                                   T.NIL, pos, "For body does not evaluate to nil")
 
-                in {exp=(), ty=T.NIL}
+                in {exp=R.unfinished, ty=T.NIL}
                 end
-          | trexp (A.BreakExp (pos)) = {exp=(), ty=T.NIL}
+          | trexp (A.BreakExp (pos)) = {exp=R.unfinished, ty=T.NIL}
           | trexp (A.OpExp {left, oper, right, pos}) =
-                    (checkInt(trexp left, pos);
-                    checkInt(trexp right, pos);
-                    {exp=(), ty=T.INT})
+                let
+                  val leftExp = checkInt(trexp left, pos)
+                  val rightExp = checkInt(trexp right, pos)
+                in {exp=R.opIR (leftExp, oper, rightExp), ty=T.INT}
+                end
           | trexp (A.VarExp (var)) = trvar var
           | trexp (A.ArrayExp {typ, size, init, pos}) =
               let val _ = checkInt (trexp size, pos)
                   val optType = S.look (tenv, typ)
               in case optType of
-                  NONE => (err pos "Unrecognized type of array"; {exp=(), ty=T.ARRAY(#ty (trexp init), ref ())})
+                  NONE => (err pos "Unrecognized type of array"; {exp=R.unfinished, ty=T.ARRAY(#ty (trexp init), ref ())})
                 | SOME(T.ARRAY(ty, _)) => (checkTypesEq(ty, #ty (trexp init), pos, "Initialized with incorrect type expected " 
                                                                                   ^ type_str (ty) ^ " got " ^ type_str (#ty (trexp init))); 
-                                      {exp=(), ty=T.ARRAY(ty, ref ())})
-                | SOME(_) => (err pos "Not an array type"; {exp=(), ty=T.BOTTOM})
+                                      {exp=R.unfinished, ty=T.ARRAY(ty, ref ())})
+                | SOME(_) => (err pos "Not an array type"; {exp=R.unfinished, ty=T.BOTTOM})
               end
           | trexp (A.LetExp ({decs, body, pos})) =
               let fun transDecs (venv, tenv, dec::decs) =
-                  let
-                    val letEnv = transDec(venv, tenv, dec)
-                  in
-                    transDecs (#venv letEnv, #tenv letEnv, decs)
-                  end
+                      let val letEnv = transDec(level, venv, tenv, dec)
+                      in
+                        transDecs (#venv letEnv, #tenv letEnv, decs)
+                      end
                   | transDecs (venv, tenv, []) = {venv = venv, tenv= tenv}
 
-                val letEnv = transDecs(level, venv, tenv, decs)
+                val letEnv = transDecs (venv, tenv, decs)
               in
-                transExp(#venv letEnv, #tenv letEnv) body
+                transExp (level, #venv letEnv, #tenv letEnv) body
               end
         and trvar (A.SimpleVar (id, pos)) =
           (case S.look (venv, id)
-           of   SOME (E.VarEntry {access, ty}) => {exp = (),
+           of   SOME (E.VarEntry {access, ty}) => {exp = R.unfinished,
                                                    ty = actual_ty (ty, pos)}
               | SOME (_) => (err pos "expected variable, got function"; err_result)
               | NONE => (err pos ("unknown variable: " ^ S.name id); err_result))
@@ -284,7 +282,7 @@ struct
                     T.RECORD (fieldList, _) => (case (List.find (fn x => (#1x) = id) fieldList) of
                                                   NONE => (err pos ("identifier not found: " ^ S.name id);
                                                            err_result)
-                                                | SOME (retValue) => {exp = (),
+                                                | SOME (retValue) => {exp = R.unfinished,
                                                                       ty = actual_ty (#2retValue, pos)})
                    | t => (err pos ("expected record type, found " ^ type_str t); err_result)
               end
@@ -293,7 +291,7 @@ struct
               in  case actual_ty (ty, pos) of
                       T.ARRAY (t, _) => let val {exp = exp1, ty = ty1} = trexp e
                                         in  case ty1 of
-                                                T.INT => {exp = (), ty = t}
+                                                T.INT => {exp = R.unfinished, ty = t}
                                               | t => (err pos ("expected int in array subscript, found " ^ type_str t); err_result)
                                         end
                     | t => type_err ("array", type_str t, pos)

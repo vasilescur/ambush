@@ -1,2 +1,2 @@
 Skeleton 5
-d2f1d"Temp"ac"TRANSLATE"h0
+d2f3d"Temp"d"Absyn"d"Symbol"ac"TRANSLATE"h0

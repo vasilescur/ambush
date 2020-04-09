@@ -26,6 +26,14 @@ Group is
   
   tree/symbol.sml
 
+  (* IR *)
+
+  tree/tree.sml
+  tree/printtree.sml
+
+  IR/translate.sig
+  IR/translate.sml
+
   semant/semant.sig
   semant/semant.sml
 
@@ -34,15 +42,8 @@ Group is
   semant/env.sig
   semant/env.sml
 
-  (* IR *)
-  IR/translate.sig
-  IR/translate.sml
-
   IR/temp.sig
   IR/temp.sml
-
-  tree/tree.sml
-  tree/printtree.sml
 
   frame/frame.sig
   frame/mipsframe.sml

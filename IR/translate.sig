@@ -4,14 +4,17 @@ sig
   type level
   type access 
 
+  val unfinished : exp
+
   val baseLevel : unit -> level
   val nextLevel : level * Temp.label * bool list -> level
 
   val intIR : int -> exp
   val stringIR : string -> exp
   val nilIR : unit -> exp 
-  (* val callIR : level * Symbol.symbol * exp list -> exp *)
-
+  val opIR : exp * Absyn.oper * exp -> exp
+  val callIR : level * level * Symbol.symbol * exp list -> exp
+  val ifIR : exp * exp * exp option -> exp
 
   (* val simpleVar : Env.access * Env.level -> Tree.exp *)
 end

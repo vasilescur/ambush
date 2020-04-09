@@ -1,6 +1,7 @@
 functor Translate (F : FRAME) : TRANSLATE =
 struct 
   structure T = Tree
+  structure A = Absyn
 
   datatype level = 
       TOPLEVEL 
@@ -11,7 +12,8 @@ struct
   datatype exp = Ex of T.exp
                | Nx of T.stm
                | Cx of Temp.label * Temp.label -> T.stm
-               | unit  (* TODO: remove *)
+
+  val unfinished = Ex (T.CONST (0))
 
   val fragList = ref [] : F.frag list ref
 
@@ -43,7 +45,6 @@ struct
                   T.TEMP r)
         end
     | unEx (Nx s) = T.ESEQ (s, T.CONST 0)
-    | unEx (ex : exp) = T.CONST 0
 
   fun unCx (Cx c) = c
     | unCx (Ex (T.CONST 1)) = (fn (labt, labf) => T.JUMP (T.NAME (labt), [labt]))
@@ -58,6 +59,17 @@ struct
 
   fun baseLevel () = TOPLEVEL
   fun nextLevel (currentLevel, label, formals) = NONTOP ({unique = ref (), parent=currentLevel, frame=F.newFrame ({name=label, formals=formals})})
+
+  (* Follow static links *)
+  fun followSLs TOPLEVEL TOPLEVEL guess = (Err.error 0 "Failed to follow SLs"; guess)
+              | followSLs TOPLEVEL _ guess = (Err.error 0 "Failed to follow SLs"; guess)
+              | followSLs _ TOPLEVEL guess = (Err.error 0 "Failed to follow SLs"; guess)
+              | followSLs (declevel as NONTOP{unique = uniqdec, parent = _, frame = _}) 
+                          (uselevel as NONTOP{unique = uniquse, parent = useparent, frame = _}) guess =
+                    if    uniqdec = uniquse
+                    then  guess
+                    else  followSLs declevel useparent (Tree.MEM guess)
+    
 
   fun intIR (x) = Ex (T.CONST x)
   fun stringIR (literal) =
@@ -81,18 +93,13 @@ struct
 
   fun nilIR () = Ex (T.CONST 0)
 
-  (* Follow static links *)
-  fun followSLs TOPLEVEL TOPLEVEL guess = (Err.error 0 "Failed to follow SLs"; guess)
-              | followSLs TOPLEVEL _ guess = (Err.error 0 "Failed to follow SLs"; guess)
-              | followSLs _ TOPLEVEL guess = (Err.error 0 "Failed to follow SLs"; guess)
-              | followSLs (declevel as NONTOP{unique = uniqdec, parent = _, frame = _}) 
-                          (uselevel as NONTOP{unique = uniquse, parent = useparent, frame = _}) guess =
-                    if    uniqdec = uniquse
-                    then  guess
-                    else  followSLs declevel useparent (Tree.MEM guess)
-
-
-  fun callIR (TOPLEVEL, calllevel, label, args) = Ex (Tree.TEMP F.FP)
+  fun opIR (left, A.PlusOp, right) = Ex (T.BINOP (T.PLUS, unEx left, unEx right))
+    | opIR (left, A.MinusOp, right) = Ex (T.BINOP (T.MINUS, unEx left, unEx right))
+    | opIR (left, A.TimesOp, right) = Ex (T.BINOP (T.MUL, unEx left, unEx right)) (* Optimizations? *)
+    | opIR (left, A.DivideOp, right) = Ex (T.BINOP (T.DIV, unEx left, unEx right))
+    | opIR (left, _, right) = Ex (T.CONST 0)
+    
+  fun callIR (TOPLEVEL, calllevel, label, args) = Ex (T.CALL (T.NAME label, List.map unEx args))
     | callIR (declevel as NONTOP{unique, parent, frame}, calllevel, label, args) =
       let
           val sl = followSLs parent calllevel (Tree.TEMP F.FP)
@@ -100,5 +107,30 @@ struct
       in
           Ex (Tree.CALL (Tree.NAME label, sl :: unExedArgs))
       end
-    
+
+  fun ifIR (test, thenExp, optElseExp) = 
+      case optElseExp of
+        SOME (elseExp) => let val trueExp = unEx thenExp
+                              val falseExp = unEx elseExp
+                              val thenLabel = Temp.newlabel ()
+                              val elseLabel = Temp.newlabel ()
+                              val joinLabel = Temp.newlabel ()
+                              val testStm = unCx test
+                          in Ex (T.ESEQ (seq [testStm (thenLabel, elseLabel),
+                                          T.LABEL thenLabel,
+                                          T.EXP trueExp,
+                                          T.JUMP (T.NAME joinLabel, [joinLabel]),
+                                          T.LABEL elseLabel,
+                                          T.EXP falseExp,
+                                          T.LABEL joinLabel], T.CONST 0))
+                          end
+      | NONE => let val condExp = unEx thenExp
+                    val thenLabel = Temp.newlabel ()
+                    val joinLabel = Temp.newlabel ()
+                    val testStm = unCx test
+                in Ex (T.ESEQ (seq [testStm (thenLabel, joinLabel), 
+                                      T.LABEL thenLabel, 
+                                      T.EXP condExp,
+                                      T.LABEL joinLabel], T.CONST 0))
+                end
 end
