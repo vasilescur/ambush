@@ -71,18 +71,19 @@ struct
   val base_env : env = {tenv=E.base_tenv, venv=E.base_venv}
 
   fun transDec (level, breakLabel, venv, tenv, A.VarDec {name, escape, typ=NONE, init, pos}) = 
-      let val {exp, ty : E.ty} = (transExp(level, breakLabel, venv, tenv)) init
+      let
+          val {exp, ty : E.ty} = (transExp(level, breakLabel, venv, tenv)) init
         in {tenv=tenv,
-            venv=S.enter(venv,name,E.VarEntry{ty = ty, access = (level, )})}
+            venv=S.enter(venv,name,E.VarEntry{ty = ty, access = R.allocateLocal level (!escape)})}
         end
     | transDec (level, breakLabel, venv, tenv, A.VarDec {name, escape, typ=SOME(symbol, posType), init, pos}) = 
       let val {exp, ty} = (transExp(level, breakLabel, venv, tenv)) init
           val eTyp = S.look(tenv, symbol)
       in case eTyp of
          NONE => (err posType "Unrecognized type"; {tenv=tenv,
-            venv=S.enter(venv,name,E.VarEntry{ty=ty, access=()})})
+            venv=S.enter(venv,name,E.VarEntry{ty=ty, access=R.allocateLocal level (!escape)})})
        | SOME(tTyp) => {tenv=tenv,
-            venv=S.enter(venv,name,E.VarEntry{ty=tTyp, access=()})}
+            venv=S.enter(venv,name,E.VarEntry{ty=tTyp, access=R.allocateLocal level (!escape)})}
       end
     | transDec (level, breakLabel, venv, tenv, A.TypeDec (types)) =
         let fun checkAbstract ({name, ty, pos}, check) = case (ty) of
@@ -158,7 +159,7 @@ struct
                             end
                       fun addParam ({name, escape, typ, pos}, {tenv, venv}) = 
                             let val paramType = findType (typ, tenv)
-                                val newVenv = S.enter (venv, name, E.VarEntry {ty=paramType, access=()})
+                                val newVenv = S.enter (venv, name, E.VarEntry {ty=paramType, access=R.allocateLocal level (!escape)})
                             in {tenv=tenv, venv=newVenv}
                             end
                       val formals = List.foldl paramToFormal [] params
@@ -249,7 +250,7 @@ struct
                 let val loTrexp = trexp lo
                     val hiTrexp = trexp hi
                     val joinLabel = Temp.newlabel ()
-                    val bodyTrexp = (transExp (level, joinLabel, S.enter (venv, var, E.VarEntry {ty=T.INT, access=()}), tenv)) body 
+                    val bodyTrexp = (transExp (level, joinLabel, S.enter (venv, var, E.VarEntry {ty=T.INT, access=R.allocateLocal level (!escape)}), tenv)) body 
                     val checkLo = checkInt (loTrexp, pos)
                     val checkHi = checkInt (hiTrexp,pos)
                     val checkBody = checkTypesEq (#ty bodyTrexp, 
@@ -291,7 +292,7 @@ struct
               end
         and trvar (A.SimpleVar (id, pos)) =
           (case S.look (venv, id)
-           of   SOME (E.VarEntry {access, ty}) => {exp = R.simpleVarIR ((level, ()), level),
+           of   SOME (E.VarEntry {access, ty}) => {exp = R.simpleVarIR (access, level),
                                                    ty = actual_ty (ty, pos)}
               | SOME (_) => (err pos "expected variable, got function"; err_result)
               | NONE => (err pos ("unknown variable: " ^ S.name id); err_result))
