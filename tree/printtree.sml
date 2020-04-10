@@ -25,6 +25,8 @@ fun printtree (outstream, s0) =
 
   and exp(T.BINOP(p,a,b),d) = (indent d; say "BINOP("; binop p; sayln ",";
 			       exp(a,d+1); sayln ","; exp(b,d+1); say ")")
+    | exp(T.RELOP(p,a,b),d) = (indent d; say "RELOP("; relop p; sayln ",";
+			       exp(a,d+1); sayln ","; exp(b,d+1); say ")")
     | exp(T.MEM(e),d) = (indent d; sayln "MEM("; exp(e,d+1); say ")")
     | exp(T.TEMP t, d) = (indent d; say "TEMP t"; say(Int.toString t))
     | exp(T.ESEQ(s,e),d) = (indent d; sayln "ESEQ("; stm(s,d+1); sayln ",";

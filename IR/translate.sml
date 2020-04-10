@@ -122,8 +122,13 @@ struct
     | opIR (left, A.MinusOp, right) = Ex (T.BINOP (T.MINUS, unEx left, unEx right))
     | opIR (left, A.TimesOp, right) = Ex (T.BINOP (T.MUL, unEx left, unEx right)) (* Optimizations? *)
     | opIR (left, A.DivideOp, right) = Ex (T.BINOP (T.DIV, unEx left, unEx right))
-    | opIR (left, _, right) = Ex (T.CONST 0)
-    
+    | opIR (left, A.EqOp, right) = Ex (T.RELOP (T.EQ, unEx left, unEx right))
+    | opIR (left, A.NeqOp, right) = Ex (T.RELOP (T.NE, unEx left, unEx right))
+    | opIR (left, A.LtOp, right) = Ex (T.RELOP (T.LT, unEx left, unEx right))
+    | opIR (left, A.LeOp, right) = Ex (T.RELOP (T.LE, unEx left, unEx right))
+    | opIR (left, A.GtOp, right) = Ex (T.RELOP (T.GT, unEx left, unEx right))
+    | opIR (left, A.GeOp, right) = Ex (T.RELOP (T.GE, unEx left, unEx right))
+
   fun callIR (TOPLEVEL, calllevel, label, args) = Ex (T.CALL (T.NAME label, List.map unEx args))
     | callIR (declevel as NONTOP{unique, parent, frame}, calllevel, label, args) =
       let

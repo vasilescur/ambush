@@ -11,6 +11,7 @@ datatype stm = SEQ of stm * stm
              | EXP of exp
 
      and exp = BINOP of binop * exp * exp
+             | RELOP of relop * exp * exp
              | MEM of exp
              | TEMP of Temp.temp
              | ESEQ of stm * exp
@@ -41,6 +42,7 @@ datatype stm = SEQ of stm * stm
              | EXP of exp
 
      and exp = BINOP of binop * exp * exp
+             | RELOP of relop * exp * exp
              | MEM of exp
              | TEMP of Temp.temp
              | ESEQ of stm * exp
