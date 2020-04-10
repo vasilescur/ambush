@@ -166,15 +166,18 @@ struct
                             end
                       val formals = List.foldl paramToFormal [] params
                       val newVenv = #venv (List.foldl addParam {tenv=tenv, venv=venv} params)
-                      val bodyType = transExp (level, breakLabel, newVenv, tenv) body
+                      val bodyExpty = transExp (level, breakLabel, newVenv, tenv) body
                       val newLabel = Temp.newlabel ()
+                      val nextLevel = R.nextLevel (level, newLabel, paramsToEscapes (params, []))
+                      val _ = R.procedureEntryExit (nextLevel, #exp bodyExpty)
                   in case result of 
-                      NONE => {tenv=tenv, venv= S.enter (venv, name, E.FunEntry {level=R.nextLevel (level, newLabel, paramsToEscapes (params, [])), label=newLabel, formals=formals, result= #ty bodyType})}
-                    | SOME (resultSym, resultPos) => (checkTypesEq (#ty bodyType, findType (resultSym, tenv), resultPos, "Function return type does not match body type check"); {tenv=tenv, venv=venv})
+                      NONE => {tenv=tenv, venv= S.enter (venv, name, E.FunEntry {level=nextLevel, label=newLabel, formals=formals, result= #ty bodyExpty})}
+                    | SOME (resultSym, resultPos) => (checkTypesEq (#ty bodyExpty, findType (resultSym, tenv), resultPos, "Function return type does not match body type check"); {tenv=tenv, venv=venv})
                     (* Need procedureEntryExit call? *)
                   end
             val newVenv = List.foldl addFuncSig venv functions
-        in {exps=[], tenv=tenv, venv= #venv (List.foldl transFunDec {tenv=tenv, venv=newVenv} functions)}
+            val funDecs = (List.foldl transFunDec {tenv=tenv, venv=newVenv} functions)
+        in {exps= [], tenv=tenv, venv= #venv funDecs}
         end
     
     and transExp(level, breakLabel, venv, tenv) = 
