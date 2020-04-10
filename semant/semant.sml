@@ -73,17 +73,19 @@ struct
   fun transDec (level, breakLabel, venv, tenv, A.VarDec {name, escape, typ=NONE, init, pos}) = 
       let
           val {exp, ty : E.ty} = (transExp(level, breakLabel, venv, tenv)) init
-        in {tenv=tenv,
-            venv=S.enter(venv,name,E.VarEntry{ty = ty, access = R.allocateLocal level (!escape)})}
+          val accessVar = R.allocateLocal level (!escape)
+        in {exps=[R.assignIR (R.simpleVarIR (accessVar, level), exp)], tenv=tenv,
+            venv=S.enter(venv,name,E.VarEntry{ty = ty, access = accessVar})}
         end
     | transDec (level, breakLabel, venv, tenv, A.VarDec {name, escape, typ=SOME(symbol, posType), init, pos}) = 
       let val {exp, ty} = (transExp(level, breakLabel, venv, tenv)) init
           val eTyp = S.look(tenv, symbol)
+          val accessVar = R.allocateLocal level (!escape)
       in case eTyp of
-         NONE => (err posType "Unrecognized type"; {tenv=tenv,
-            venv=S.enter(venv,name,E.VarEntry{ty=ty, access=R.allocateLocal level (!escape)})})
-       | SOME(tTyp) => {tenv=tenv,
-            venv=S.enter(venv,name,E.VarEntry{ty=tTyp, access=R.allocateLocal level (!escape)})}
+         NONE => (err posType "Unrecognized type"; {exps=[R.assignIR (R.simpleVarIR (accessVar, level), exp)], tenv=tenv,
+            venv=S.enter(venv,name,E.VarEntry{ty=ty, access=accessVar})})
+       | SOME(tTyp) => {exps=[R.assignIR (R.simpleVarIR (accessVar, level), exp)], tenv=tenv,
+            venv=S.enter(venv,name,E.VarEntry{ty=tTyp, access=accessVar})}
       end
     | transDec (level, breakLabel, venv, tenv, A.TypeDec (types)) =
         let fun checkAbstract ({name, ty, pos}, check) = case (ty) of
@@ -119,7 +121,7 @@ struct
                             else ());
                             List.foldl addName tenv types)
         in
-          {tenv=List.foldl transTypeDec newTenv types, venv=venv}
+          {exps=[], tenv=List.foldl transTypeDec newTenv types, venv=venv}
         end
     | transDec (level, breakLabel, venv, tenv, A.FunctionDec (functions)) = 
         let fun paramsToEscapes ([], escapes) = escapes
@@ -172,7 +174,7 @@ struct
                     (* Need procedureEntryExit call? *)
                   end
             val newVenv = List.foldl addFuncSig venv functions
-        in {tenv=tenv, venv= #venv (List.foldl transFunDec {tenv=tenv, venv=newVenv} functions)}
+        in {exps=[], tenv=tenv, venv= #venv (List.foldl transFunDec {tenv=tenv, venv=newVenv} functions)}
         end
     
     and transExp(level, breakLabel, venv, tenv) = 
@@ -279,16 +281,16 @@ struct
                 | SOME(_) => (err pos "Not an array type"; {exp=R.nilIR (), ty=T.BOTTOM})
               end
           | trexp (A.LetExp ({decs, body, pos})) =
-              let fun transDecs (venv, tenv, dec::decs) =
-                      let val letEnv = transDec(level, breakLabel, venv, tenv, dec)
+              let fun transDecs (exps, venv, tenv, dec::decs) =
+                      let val letEnv = transDec (level, breakLabel, venv, tenv, dec)
                       in
-                        transDecs (#venv letEnv, #tenv letEnv, decs)
+                        transDecs (exps@(#exps letEnv), #venv letEnv, #tenv letEnv, decs)
                       end
-                  | transDecs (venv, tenv, []) = {venv = venv, tenv= tenv}
+                  | transDecs (exps, venv, tenv, []) = {exps=exps, venv=venv, tenv=tenv}
 
-                val letEnv = transDecs (venv, tenv, decs)
-              in
-                transExp (level, breakLabel, #venv letEnv, #tenv letEnv) body
+                val letEnv = transDecs ([], venv, tenv, decs)
+                val bodyTrexp = transExp (level, breakLabel, #venv letEnv, #tenv letEnv) body
+              in {exp=R.letIR (#exps letEnv, #exp bodyTrexp), ty= #ty bodyTrexp}
               end
         and trvar (A.SimpleVar (id, pos)) =
           (case S.look (venv, id)

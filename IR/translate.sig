@@ -31,6 +31,7 @@ sig
   val intIR : int -> exp
   val nilIR : unit -> exp 
   val stringIR : string -> exp
+  val letIR : exp list * exp -> exp
 
 
   val procedureEntryExit : level * exp -> unit

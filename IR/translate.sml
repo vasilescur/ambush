@@ -212,6 +212,10 @@ struct
 
   fun arrayIR (sizeExp, initExp) = Ex (T.CALL (T.NAME initArray, [unEx sizeExp, unEx initExp]))
 
+  fun letIR (decExps, bodyExp) = let fun stm (dec) = unNx dec
+                                 in Ex (T.ESEQ (seq (List.map stm decExps), unEx bodyExp))
+                                 end
+
   fun newVar () = Ex (T.TEMP (Temp.newtemp ()))
 
   fun procedureEntryExit (level', body') =
