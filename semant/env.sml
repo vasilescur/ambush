@@ -9,7 +9,7 @@ struct
                     | FunEntry of {level: level,
                                    label: Temp.label,
                                    formals: ty list, 
-                                   result: ty}
+                                   result: ty ref}
   
   (* Base type environment -- built in types "int" and "string" *)
   val base_tenv = Symbol.enter (

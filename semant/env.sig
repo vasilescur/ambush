@@ -10,7 +10,7 @@ sig
     | FunEntry of {level: level,
                     label: Temp.label,
                     formals: ty list, 
-                    result : ty}
+                    result : ty ref}
 
   val base_tenv : ty Symbol.table (* predefined types*)
   val base_venv : enventry Symbol.table (* predefined functions*)

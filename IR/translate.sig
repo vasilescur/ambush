@@ -34,7 +34,7 @@ sig
   val letIR : exp list * exp -> exp
 
 
-  val procedureEntryExit : level * exp -> unit
+  val procedureEntryExit : level * exp * Temp.label -> unit
 
   val result : unit -> frag list
 

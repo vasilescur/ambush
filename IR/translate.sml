@@ -218,11 +218,11 @@ struct
 
   fun newVar () = Ex (T.TEMP (Temp.newtemp ()))
 
-  fun procedureEntryExit (level', body') =
+  fun procedureEntryExit (level', body', label) =
     let val levelFrame =  (* Determine the level *)
           case level' of 
               TOPLEVEL => (Err.error 0 "Illegal function declaration in outermost level";
-                           F.nextFrame ({name = Temp.newlabel(), formals = []}))
+                           F.nextFrame ({name = label, formals = []}))
             | NONTOP ({unique = _, parent = _, frame = frame'}) => frame'
         val trBody = unNx body'
     in  (* Append to frag list *)

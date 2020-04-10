@@ -136,18 +136,19 @@ struct
                             end
                       val formals = List.foldl paramToFormal [] params
                       val newLabel = Temp.newlabel ()
+                      val _ = err pos ("Added function signature with label " ^ S.name (newLabel))
                   in case result of 
-                      NONE => S.enter(venv, name, E.FunEntry {level=R.nextLevel (level, newLabel, paramsToEscapes (params, [])), label=newLabel, formals=formals, result=T.BOTTOM})
+                      NONE => S.enter(venv, name, E.FunEntry {level=R.nextLevel (level, newLabel, paramsToEscapes (params, [])), label=newLabel, formals=formals, result=ref T.BOTTOM})
                     | SOME (resultVal, resultPos) => 
                               let val resultTy = S.look (tenv, resultVal)
                               in case resultTy of
                                   NONE => 
                                         (err resultPos "Unrecognized type"; 
                                          S.enter (venv, name,
-                                                  E.FunEntry {level=R.nextLevel (level, newLabel, paramsToEscapes (params, [])), label=newLabel, formals=formals, result=T.BOTTOM}))
+                                                  E.FunEntry {level=R.nextLevel (level, newLabel, paramsToEscapes (params, [])), label=newLabel, formals=formals, result=ref T.BOTTOM}))
                                 | SOME(resultTyVal) => 
                                         S.enter(venv, name, 
-                                                E.FunEntry {level=R.nextLevel (level, newLabel, paramsToEscapes (params, [])), label=newLabel, formals=formals, result=resultTyVal})
+                                                E.FunEntry {level=R.nextLevel (level, newLabel, paramsToEscapes (params, [])), label=newLabel, formals=formals, result=ref resultTyVal})
                                   
                               end
                   end
@@ -167,11 +168,13 @@ struct
                       val formals = List.foldl paramToFormal [] params
                       val newVenv = #venv (List.foldl addParam {tenv=tenv, venv=venv} params)
                       val bodyExpty = transExp (level, breakLabel, newVenv, tenv) body
-                      val newLabel = Temp.newlabel ()
-                      val nextLevel = R.nextLevel (level, newLabel, paramsToEscapes (params, []))
-                      val _ = R.procedureEntryExit (nextLevel, #exp bodyExpty)
+                      val newVenv = case S.look (venv, name) of 
+                                NONE => venv
+                              | SOME(E.FunEntry {level, label, formals, result}) => (R.procedureEntryExit (level, #exp bodyExpty, label); 
+                                                                                     result := (#ty bodyExpty); 
+                                                                                     venv)
                   in case result of 
-                      NONE => {tenv=tenv, venv= S.enter (venv, name, E.FunEntry {level=nextLevel, label=newLabel, formals=formals, result= #ty bodyExpty})}
+                      NONE => {tenv=tenv, venv=newVenv}
                     | SOME (resultSym, resultPos) => (checkTypesEq (#ty bodyExpty, findType (resultSym, tenv), resultPos, "Function return type does not match body type check"); {tenv=tenv, venv=venv})
                     (* Need procedureEntryExit call? *)
                   end
@@ -194,7 +197,7 @@ struct
                                 NONE => (err pos "Function undefined"; {exp=R.nilIR (), ty=T.BOTTOM})
                               | SOME (entry) => case entry of 
                                               E.FunEntry ({formals, result, level=funlevel, label}) => (checkArgs (formals, args); 
-                                                                                               {exp=R.callIR (funlevel, level, label, map translateArg args), ty=result})
+                                                                                               {exp=R.callIR (funlevel, level, label, map translateArg args), ty= (!result)})
                                             | E.VarEntry ({ty, access}) => (err pos "Function undefined"; {exp=R.nilIR (), ty=T.BOTTOM})
               end
           | trexp (A.RecordExp ({fields, typ, pos})) = 
@@ -340,7 +343,7 @@ struct
       val ir = #exp ((transExp (mainLevel, mainLabel, venv, tenv)) absyn)
 
     in
-      R.procedureEntryExit (mainLevel, ir);
+      R.procedureEntryExit (mainLevel, ir, mainLabel);
       R.result ()
     end
 end
