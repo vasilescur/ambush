@@ -92,6 +92,9 @@ struct
                   else followSLs declevel useparent (Tree.MEM guess)
     
 
+  fun simpleVarIR ((declarationLevel, frameAccess), useLevel) =
+    Ex (F.exp (frameAccess, followSLs declarationLevel useLevel (Tree.TEMP F.FP)))
+
   fun intIR (x) = Ex (T.CONST x)
 
   fun stringIR (literal) =

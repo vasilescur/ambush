@@ -1,10 +1,10 @@
 functor Env (T : TRANSLATE) : ENV =
 struct
-  type access = unit
+  type access = T.access
   type level = T.level
   type ty = Types.ty
 
-  datatype enventry = VarEntry of {access: access,
+  datatype enventry = VarEntry of {access: T.access,
                                    ty: ty}
                     | FunEntry of {level: level,
                                    label: Temp.label,

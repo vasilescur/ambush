@@ -73,7 +73,7 @@ struct
   fun transDec (level, breakLabel, venv, tenv, A.VarDec {name, escape, typ=NONE, init, pos}) = 
       let val {exp, ty : E.ty} = (transExp(level, breakLabel, venv, tenv)) init
         in {tenv=tenv,
-            venv=S.enter(venv,name,E.VarEntry{ty = ty, access = ()})}
+            venv=S.enter(venv,name,E.VarEntry{ty = ty, access = (level, )})}
         end
     | transDec (level, breakLabel, venv, tenv, A.VarDec {name, escape, typ=SOME(symbol, posType), init, pos}) = 
       let val {exp, ty} = (transExp(level, breakLabel, venv, tenv)) init
@@ -291,7 +291,7 @@ struct
               end
         and trvar (A.SimpleVar (id, pos)) =
           (case S.look (venv, id)
-           of   SOME (E.VarEntry {access, ty}) => {exp = R.unfinished,
+           of   SOME (E.VarEntry {access, ty}) => {exp = R.simpleVarIR ((level, ()), level),
                                                    ty = actual_ty (ty, pos)}
               | SOME (_) => (err pos "expected variable, got function"; err_result)
               | NONE => (err pos ("unknown variable: " ^ S.name id); err_result))
