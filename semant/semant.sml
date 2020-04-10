@@ -102,7 +102,7 @@ struct
                                                       end
                                                   | A.RecordTy (fields)    =>
                                                       let fun transRecTy ({name, escape, typ, pos}, fieldTypes) = 
-                                                          let val optType = S.look(tenv, typ)
+                                                          let val optType = S.look (tenv, typ)
                                                           in case optType of
                                                             NONE => (name, T.BOTTOM)::fieldTypes
                                                           | SOME(fieldType) => (name, fieldType)::fieldTypes
@@ -143,7 +143,7 @@ struct
                               in case resultTy of
                                   NONE => 
                                         (err resultPos "Unrecognized type"; 
-                                         S.enter (venv, name, 
+                                         S.enter (venv, name,
                                                   E.FunEntry {level=R.nextLevel (level, newLabel, paramsToEscapes (params, [])), label=newLabel, formals=formals, result=T.BOTTOM}))
                                 | SOME(resultTyVal) => 
                                         S.enter(venv, name, 
@@ -212,13 +212,14 @@ struct
                     | getExps ((sym, exp, pos)::fields) = (#exp (trexp exp))::(getExps fields)
               in (checkFields (fields, reqFields) ; {exp=R.recordIR (getExps fields), ty=recordType})
               end
-          | trexp (A.SeqExp (list)) = 
+          | trexp (A.SeqExp (seq)) = 
               let fun checkExp ((exp, pos)) = trexp exp
                   fun getType ({ty=ty, exp=exp}) = ty
                   fun getExp ({ty=ty, exp=exp}) = exp
-                  val seqExp = List.map checkExp list
-                  val seqExpType = List.map getType seqExp
-              in {exp=R.seqIR (List.map getExp seqExp), ty=T.NIL}
+                  val seqExp = List.map checkExp seq
+                  val seqType = if (List.length seqExp = 0) then T.NIL
+                                else #ty (List.last seqExp)
+              in {exp=R.seqIR (List.map getExp seqExp), ty= seqType}
               end
           | trexp (A.AssignExp ({var, exp, pos})) = 
               let val trVar = trvar var

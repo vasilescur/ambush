@@ -42,8 +42,8 @@ fun a_IGNORE_ME x = 3;
     | tyfield of A.field
     | tyfields of A.field list
     | tyfields_tail of A.field list
-    (* | exp_seq of A.exp *)
     | exp_tail of (A.exp * pos) list
+    | exp_can_be_empty of (A.exp * pos) list
     | arguments of A.exp list
     | arguments_tail of A.exp list
     | record_field of (A.symbol * A.exp * pos)
@@ -255,5 +255,8 @@ exp:
 (* Allow dealing with sequences of expressions, such as in the first body
    of a let statement-- separated by semicolons. *)
 exp_tail:
-      SEMICOLON exp exp_tail      ((exp, expleft)::exp_tail)
-  |   (* empty *)                 ([])
+      SEMICOLON exp exp_can_be_empty  ((exp, expleft)::exp_can_be_empty)
+
+exp_can_be_empty:
+      SEMICOLON exp exp_can_be_empty  ((exp, expleft)::exp_can_be_empty)
+    | (* empty *)                      ([])
