@@ -136,7 +136,6 @@ struct
                             end
                       val formals = List.foldl paramToFormal [] params
                       val newLabel = Temp.newlabel ()
-                      val _ = err pos ("Added function signature with label " ^ S.name (newLabel))
                   in case result of 
                       NONE => S.enter(venv, name, E.FunEntry {level=R.nextLevel (level, newLabel, paramsToEscapes (params, [])), label=newLabel, formals=formals, result=ref T.BOTTOM})
                     | SOME (resultVal, resultPos) => 

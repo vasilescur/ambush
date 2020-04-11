@@ -9,6 +9,17 @@ sig
   val FP : Temp.temp
   val RV : Temp.temp
 
+  val SP : Temp.temp
+  val RA : Temp.temp
+
+  type register = string 
+
+  (* val registers : register list  *)
+
+  val argregs : Temp.temp list
+  val callersaves : Temp.temp list 
+  val calleesaves : Temp.temp list
+
   val wordSize : int
 
   val exp : access * Tree.exp -> Tree.exp

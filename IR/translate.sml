@@ -2,6 +2,7 @@ functor Translate (F : FRAME) : TRANSLATE =
 struct 
   structure T = Tree
   structure A = Absyn
+  structure Err = ErrorMsg
 
   datatype level = 
       TOPLEVEL 

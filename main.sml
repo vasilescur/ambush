@@ -10,24 +10,24 @@ struct
 
   fun emitproc out (F.PROC{body,frame}) =
         let val _ = print ("emit " ^ F.name frame ^ "\n")
-    (*      val _ = Printtree.printtree(out,body); *)
+            (* val _ = Printtree.printtree(out,body); *)
             val stms = Canon.linearize body
-    (*      val _ = app (fn s => Printtree.printtree(out,s)) stms; *)
+            (* val _ = app (fn s => Printtree.printtree(out,s)) stms; *)
             val stms' = Canon.traceSchedule(Canon.basicBlocks stms)
             val instrs =   List.concat(map (MIPSGen.codeGen frame) stms') 
             val format0 = Assem.format(Temp.makestring)
-        in  app (fn i => TextIO.output(out,format0 i)) instrs
+        in  app (fn i => TextIO.output(out, (format0 i) ^ "\n")) instrs
         end
-    | emitproc out (F.STRING(lab,s)) = TextIO.output(out, F.string (lab,s))
+    | emitproc out (F.STRING(lab,s)) = TextIO.output(out, (F.string (lab,s)) ^ "\n")
 
    fun withOpenFile fname f = 
        let val out = TextIO.openOut fname
-        in (f out before TextIO.closeOut out) 
-	    handle e => (TextIO.closeOut out; raise e)
+        in ((f TextIO.stdOut); (f out before TextIO.closeOut out))
+      handle e => (TextIO.closeOut out; raise e)
        end 
 
    fun compile filename = 
-       let val absyn = Parse.parse filename
+       let val absyn = Parse.parse (filename ^ ".tig") 
            val frags = ((*FindEscape.prog absyn;*) S.transProg absyn)
         in 
             withOpenFile (filename ^ ".s") 

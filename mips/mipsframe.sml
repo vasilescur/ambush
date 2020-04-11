@@ -1,9 +1,10 @@
-structure T = Tree 
-structure Err = ErrorMsg
-
 structure MIPSFrame : FRAME =
 struct
+  structure T = Tree 
+  structure Err = ErrorMsg
 
+  structure A = Assem
+  structure S = Symbol
   datatype access = 
       InFrame of int 
     | InReg of Temp.temp
@@ -15,8 +16,73 @@ struct
       PROC of {body: Tree.stm, frame: frame} 
     | STRING of Temp.label * string
 
+
+  type register = string
+
+  (* Register Lists *)
+
+  (* Results and evaluation *)
+  val v0 = Temp.newtemp ()
+  val v1 = Temp.newtemp ()
+
+  (* Argument registers *)
+  val a0 = Temp.newtemp ()
+  val a1 = Temp.newtemp ()
+  val a2 = Temp.newtemp ()
+  val a3 = Temp.newtemp ()
+
+  (* Temporary (caller-saved) *)
+  val t0 = Temp.newtemp ()
+  val t1 = Temp.newtemp ()
+  val t2 = Temp.newtemp ()
+  val t3 = Temp.newtemp ()
+  val t4 = Temp.newtemp ()
+  val t5 = Temp.newtemp ()
+  val t6 = Temp.newtemp ()
+  val t7 = Temp.newtemp ()
+
+  val t8 = Temp.newtemp ()
+  val t9 = Temp.newtemp ()
+
+  (* Saved (callee-saved) *)
+  val s0 = Temp.newtemp ()
+  val s1 = Temp.newtemp ()
+  val s2 = Temp.newtemp ()
+  val s3 = Temp.newtemp ()
+  val s4 = Temp.newtemp ()
+  val s5 = Temp.newtemp ()
+  val s6 = Temp.newtemp ()
+  val s7 = Temp.newtemp ()
+
+  (* Special registers *)
   val FP = Temp.newtemp ()
   val RV = Temp.newtemp ()
+
+  val SP = Temp.newtemp ()
+  val RA = Temp.newtemp ()
+
+  val ZERO = Temp.newtemp ()
+  val GP = Temp.newtemp ()
+
+
+  (* Categories of registers *)
+  val specialargs = [RV, FP, SP, RA]
+  val argregs = [a0, a1, a2, a3]
+  val calleesaves = [s0, s1, s2, s3, s4, s5, s6, s7]
+  val callersaves = [t0, t1, t2, t3, t4, t5, t6, t7]
+
+  val reglist =
+    [("$a0", a0), ("$a1", a1), ("$a2", a2), ("$a3", a3), 
+    
+     ("$t0", t0), ("$t1", t1), ("$t2", t2), ("$t3", t3), 
+     ("$t4", t4), ("$t5", t5), ("$t6", t6), ("$t7", t7), 
+     
+     ("$s0", s0), ("$s1", s1), ("$s2", s2), ("$s3", s3), 
+     ("$s4", s4), ("$s5", s5), ("$s6", s6), ("$s7", s7), 
+     
+     ("$fp", FP), ("$v0", RV), ("$sp", SP), ("$ra", RA)]
+
+
   val wordSize = 4 
   val argRegisters = 4
 
