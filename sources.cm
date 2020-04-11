@@ -21,10 +21,10 @@ Group is
   parser/parse.sml
 
   (* Semantic Analysis *)
-  tree/table.sig
-  tree/table.sml
+  table/table.sig
+  table/table.sml
   
-  tree/symbol.sml
+  table/symbol.sml
 
   (* IR *)
 
@@ -45,5 +45,11 @@ Group is
   IR/temp.sig
   IR/temp.sml
 
-  frame/frame.sig
-  frame/mipsframe.sml
+  assem/frame.sig
+  mips/mipsframe.sml
+
+  assem/codegen.sig
+  mips/mipsgen.sml
+
+  assem/canon.sml
+  assem/assem.sml

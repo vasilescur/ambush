@@ -21,7 +21,7 @@ struct
   val argRegisters = 4
 
   (* Getters *)
-  fun name {name = name, formals = _, numLocals = _, curOffset = _} = name
+  fun name {name = symbol, formals = _, numLocals = _, curOffset = _} = Symbol.name symbol
   fun formals {name = _, formals = formals, numLocals = _, curOffset = _} = formals
 
 
@@ -51,6 +51,7 @@ struct
           InFrame offset => Tree.MEM(Tree.BINOP(Tree.PLUS, frameaddr, Tree.CONST offset))
         | InReg temp => Tree.TEMP(temp)
 
+  fun string (label, str) = str
   
   fun nextFrame {name, formals} = 
         let fun allocateFormals(offset, [], allocList, numRegs) = allocList

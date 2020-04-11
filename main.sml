@@ -1,29 +1,37 @@
-structure Main =
+structure Main = 
 struct
+
   structure F = MIPSFrame
-  structure R = Translate (F)
-  structure S = Semant (R)
+  structure Tr = Translate(F)
+  structure S = Semant(Tr)
+  (* structure R = RegAlloc *)
 
-  fun main (fileName : string) = 
-    let val _ = ()
-    
-        (* Lex and Parse --> AST *)
-        val absyn = Parse.parse fileName
+  fun getsome (SOME x) = x
 
-        (* Typecheck and translate --> fragment list *)
-        val _ = R.fragList := []
-        val frags  = S.transProg absyn
+  fun emitproc out (F.PROC{body,frame}) =
+        let val _ = print ("emit " ^ F.name frame ^ "\n")
+    (*      val _ = Printtree.printtree(out,body); *)
+            val stms = Canon.linearize body
+    (*      val _ = app (fn s => Printtree.printtree(out,s)) stms; *)
+            val stms' = Canon.traceSchedule(Canon.basicBlocks stms)
+            val instrs =   List.concat(map (MIPSGen.codeGen frame) stms') 
+            val format0 = Assem.format(Temp.makestring)
+        in  app (fn i => TextIO.output(out,format0 i)) instrs
+        end
+    | emitproc out (F.STRING(lab,s)) = TextIO.output(out, F.string (lab,s))
 
+   fun withOpenFile fname f = 
+       let val out = TextIO.openOut fname
+        in (f out before TextIO.closeOut out) 
+	    handle e => (TextIO.closeOut out; raise e)
+       end 
 
-        (* For testing: print the fragment list *)
-        fun printFragment (F.PROC ({body = body', frame = frame'})) = 
-              (F.printFrame frame';
-               Printtree.printtree (TextIO.stdOut, body');
-               print "\n")
-          | printFragment (F.STRING (label', literal)) = 
-              print ("[STRING] " ^ (Symbol.name label') ^ " \"" ^ literal ^ "\"\n")
+   fun compile filename = 
+       let val absyn = Parse.parse filename
+           val frags = ((*FindEscape.prog absyn;*) S.transProg absyn)
+        in 
+            withOpenFile (filename ^ ".s") 
+	     (fn out => (app (emitproc out) frags))
+       end
 
-    in  app printFragment frags;
-        frags
-    end
 end

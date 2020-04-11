@@ -12,9 +12,10 @@ sig
   val wordSize : int
 
   val exp : access * Tree.exp -> Tree.exp
-  val name : frame -> Temp.label
+  val name : frame -> string
   val formals : frame -> access list
   val nextFrame : {name: Temp.label, formals: bool list} -> frame
+  val string: Temp.label * string -> string
 
   val allocateLocal : frame -> bool -> access 
 
