@@ -231,8 +231,9 @@ struct
                            F.nextFrame ({name = label, formals = []}))
             | NONTOP ({unique = _, parent = _, frame = frame'}) => frame'
         val trBody = unNx body'
+        val trBody' = F.procEntryExit1(levelFrame, trBody)
     in  (* Append to frag list *)
-        fragList := F.PROC ({body = trBody, frame = levelFrame}) :: (!fragList)
+        fragList := F.PROC ({body = trBody', frame = levelFrame}) :: (!fragList)
     end
 
   fun result () = !fragList

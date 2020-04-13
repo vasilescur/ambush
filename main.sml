@@ -14,9 +14,10 @@ struct
             val stms = Canon.linearize body
             (* val _ = app (fn s => Printtree.printtree(out,s)) stms; *)
             val stms' = Canon.traceSchedule(Canon.basicBlocks stms)
-            val instrs =   List.concat(map (MIPSGen.codeGen frame) stms') 
+            val instrs = F.procEntryExit2 (frame, List.concat (map (MIPSGen.codeGen frame) stms'))
+            val {prolog, body, epilog} = F.procEntryExit3 (frame, instrs)
             val format0 = Assem.format(Temp.makestring)
-        in  app (fn i => TextIO.output(out, (format0 i) ^ "\n")) instrs
+        in  (TextIO.output (out, prolog); (app (fn i => TextIO.output(out, (format0 i) ^ "\n")) instrs); TextIO.output (out, epilog))
         end
     | emitproc out (F.STRING(lab,s)) = TextIO.output(out, (F.string (lab,s)) ^ "\n")
 

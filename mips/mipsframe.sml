@@ -112,6 +112,17 @@ struct
 
   fun procEntryExit1(frame', stm') = stm'
 
+  fun procEntryExit2(frame, body) =
+        body @
+        [A.OPER{assem="",
+        src =[ZERO,RA,SP]@calleesaves,
+        dst=[], jump=SOME[]}]
+
+  fun procEntryExit3({name, formals, numLocals, curOffset}, body) =
+        {prolog = "PROCEDURE " ^ Symbol.name name ^ "\n",
+         body = body,
+         epilog = "END " ^ Symbol.name name ^ "\n"}
+
   fun exp (fraccess, frameaddr) = 
       case fraccess of
           InFrame offset => Tree.MEM(Tree.BINOP(Tree.PLUS, frameaddr, Tree.CONST offset))
