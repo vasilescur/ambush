@@ -9,7 +9,7 @@
 ### Group Members
 
 - Jake Derry
-- Ryan Piersma
+- <strike>Ryan Piersma</strike>
 - Radu Vasilescu
 
 #### Why the name Ambush?
