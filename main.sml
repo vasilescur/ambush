@@ -6,8 +6,6 @@ struct
   structure S = Semant(Tr)
   (* structure R = RegAlloc *)
 
-  fun getsome (SOME x) = x
-
   fun emitproc out (F.PROC{body,frame}) =
         let val _ = print ("emit " ^ F.name frame ^ "\n")
             (* val _ = Printtree.printtree(out,body); *)
@@ -16,6 +14,10 @@ struct
             val stms' = Canon.traceSchedule(Canon.basicBlocks stms)
             val instrs = F.procEntryExit2 (frame, List.concat (map (MIPSGen.codeGen frame) stms'))
             val {prolog, body, epilog} = F.procEntryExit3 (frame, instrs)
+
+            val (graph, nodelist) = MakeGraph.instrs2graph (body)
+            val printgraph = Flow.G.printGraph (Flow.printNode)
+            val _ = printgraph graph
             val format0 = Assem.format(Temp.makestring)
         in  (TextIO.output (out, prolog); (app (fn i => TextIO.output(out, (format0 i) ^ "\n")) instrs); TextIO.output (out, epilog))
         end
@@ -23,16 +25,15 @@ struct
 
    fun withOpenFile fname f = 
        let val out = TextIO.openOut fname
-        in ((f TextIO.stdOut); (f out before TextIO.closeOut out))
-      handle e => (TextIO.closeOut out; raise e)
+       in  ((f TextIO.stdOut); (f out before TextIO.closeOut out))
+       handle e => (TextIO.closeOut out; raise e)
        end 
 
    fun compile filename = 
        let val absyn = Parse.parse (filename ^ ".tig") 
            val frags = ((*FindEscape.prog absyn;*) S.transProg absyn)
-        in 
-            withOpenFile (filename ^ ".s") 
-	     (fn out => (app (emitproc out) frags))
+       in  withOpenFile (filename ^ ".s") 
+	                      (fn out => (app (emitproc out) frags))
        end
 
 end

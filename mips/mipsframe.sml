@@ -108,7 +108,9 @@ struct
     (print ("FRAME <" ^ (Symbol.name name') ^ "> (" ^ Int.toString(!numLocals') ^ " locals, current offset = " ^ Int.toString(!currentOffset') ^ ")\n"))
 
   fun externalCall (s, args) =
-      Tree.CALL(Tree.NAME(Temp.namedlabel s), args)
+      (* =============================================== TODO: external call No-op noop NOP  =============================================== *)
+      (* Tree.CALL(Tree.NAME(Temp.namedlabel s), args) *)
+      Tree.NOP ()
 
   fun procEntryExit1(frame', stm') = stm'
 

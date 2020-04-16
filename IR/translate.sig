@@ -37,5 +37,6 @@ sig
   val procedureEntryExit : level * exp * Temp.label -> unit
 
   val result : unit -> frag list
+  val reset : unit -> unit
 
 end

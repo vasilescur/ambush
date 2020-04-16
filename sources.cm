@@ -31,8 +31,8 @@ Group is
   tree/tree.sml
   tree/printtree.sml
 
-  IR/translate.sig
-  IR/translate.sml
+  ir/translate.sig
+  ir/translate.sml
 
   semant/semant.sig
   semant/semant.sml
@@ -42,8 +42,8 @@ Group is
   semant/env.sig
   semant/env.sml
 
-  IR/temp.sig
-  IR/temp.sml
+  ir/temp.sig
+  ir/temp.sml
 
   assem/frame.sig
   mips/mipsframe.sml
@@ -53,3 +53,11 @@ Group is
 
   assem/canon.sml
   assem/assem.sml
+
+  liveness/graph/funcgraph.sig
+  liveness/graph/funcgraph.sml
+
+  liveness/flow.sml
+  liveness/nodekey.sml
+  liveness/makegraph.sml
+  (* liveness/liveness.sml *)

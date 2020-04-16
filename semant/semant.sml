@@ -188,7 +188,7 @@ struct
           | trexp (A.StringExp (string, pos)) = {exp=(R.stringIR (string)), ty=T.STRING}
           | trexp (A.NilExp) = {exp=(R.nilIR ()), ty=T.NIL}
           | trexp (A.CallExp ({func, args, pos})) = 
-              let fun checkArgs (formal::formals, arg::args) =
+              let fun checkArgs (formal::formals, arg::args) =  (* Only checks the first arg and formal match *)
                     checkTypesEq (formal, #ty (trexp arg), pos, "Argument does not match function signature")
                   fun translateArg (exp) = #exp (trexp exp)
                   val optFunc = S.look (venv, func)
@@ -330,6 +330,8 @@ struct
   fun transProg (absyn : Absyn.exp) =
     let
       val _ = ()
+
+      val _ = R.reset ()
 
       (* Create the tenv and venv *)
       val venv : venv = E.base_venv

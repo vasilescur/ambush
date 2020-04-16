@@ -21,5 +21,14 @@ struct
                     Types.STRING)
 
 
-  val base_venv = Symbol.empty
+  val base_venv = 
+    (* let val _ = ()
+        (* let fun addToVenv ((s, t), table) = S.enter (table, S.symbol s, t) *)
+        (* val library_funs = [
+            ("print", FunEntry ({level=T.outermost, label=Temp.namedlabel "__print", formals=[T.STRING], result=T.UNIT})),
+
+        ]       *)
+    in  Symbol.empty
+    end *)
+    Symbol.empty
 end
