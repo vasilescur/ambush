@@ -234,6 +234,7 @@ struct
         val trBody = unNx body'
         val trBody' = F.procEntryExit1(levelFrame, trBody)
     in  (* Append to frag list *)
+        print "procedureEntryExit just added to fragList\n";
         fragList := F.PROC ({body = trBody', frame = levelFrame}) :: (!fragList)
     end
 

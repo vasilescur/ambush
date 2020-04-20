@@ -1,24 +1,10 @@
 27 reduce/reduce conflicts
-47 shift/reduce conflicts
+28 shift/reduce conflicts
 1 rule not reduced
 
 warning: rule <exp_can_be_empty : SEMICOLON exp exp_can_be_empty > will never be reduced
 error:  state 32: shift/reduce conflict (shift FUNCTION, reduce by rule 5)
 error:  state 35: shift/reduce conflict (shift TYPE, reduce by rule 4)
-error:  state 45: shift/reduce conflict (shift SEMICOLON, reduce by rule 40)
-error:  state 52: shift/reduce conflict (shift SEMICOLON, reduce by rule 50)
-error:  state 54: shift/reduce conflict (shift SEMICOLON, reduce by rule 58)
-error:  state 55: shift/reduce conflict (shift SEMICOLON, reduce by rule 57)
-error:  state 56: shift/reduce conflict (shift SEMICOLON, reduce by rule 62)
-error:  state 57: shift/reduce conflict (shift SEMICOLON, reduce by rule 64)
-error:  state 58: shift/reduce conflict (shift SEMICOLON, reduce by rule 61)
-error:  state 59: shift/reduce conflict (shift SEMICOLON, reduce by rule 63)
-error:  state 60: shift/reduce conflict (shift SEMICOLON, reduce by rule 60)
-error:  state 61: shift/reduce conflict (shift SEMICOLON, reduce by rule 59)
-error:  state 62: shift/reduce conflict (shift SEMICOLON, reduce by rule 43)
-error:  state 63: shift/reduce conflict (shift SEMICOLON, reduce by rule 44)
-error:  state 64: shift/reduce conflict (shift SEMICOLON, reduce by rule 42)
-error:  state 65: shift/reduce conflict (shift SEMICOLON, reduce by rule 41)
 error:  state 66: shift/reduce conflict (shift OR, reduce by rule 68)
 error:  state 66: shift/reduce conflict (shift AND, reduce by rule 68)
 error:  state 66: shift/reduce conflict (shift GE, reduce by rule 68)
@@ -32,8 +18,6 @@ error:  state 66: shift/reduce conflict (shift TIMES, reduce by rule 68)
 error:  state 66: shift/reduce conflict (shift MINUS, reduce by rule 68)
 error:  state 66: shift/reduce conflict (shift PLUS, reduce by rule 68)
 error:  state 66: shift/reduce conflict (shift SEMICOLON, reduce by rule 68)
-error:  state 92: shift/reduce conflict (shift SEMICOLON, reduce by rule 53)
-error:  state 93: shift/reduce conflict (shift SEMICOLON, reduce by rule 52)
 error:  state 101: shift/reduce conflict (shift OR, reduce by rule 68)
 error:  state 101: shift/reduce conflict (shift AND, reduce by rule 68)
 error:  state 101: shift/reduce conflict (shift GE, reduce by rule 68)
@@ -74,9 +58,6 @@ error:  state 119: reduce/reduce conflict between rule 67 and rule 66 on RPAREN
 error:  state 119: reduce/reduce conflict between rule 67 and rule 66 on SEMICOLON
 error:  state 119: reduce/reduce conflict between rule 67 and rule 66 on COMMA
 error:  state 119: reduce/reduce conflict between rule 67 and rule 66 on EOF
-error:  state 128: shift/reduce conflict (shift SEMICOLON, reduce by rule 51)
-error:  state 130: shift/reduce conflict (shift SEMICOLON, reduce by rule 49)
-error:  state 143: shift/reduce conflict (shift SEMICOLON, reduce by rule 54)
 
 state 0:
 
@@ -959,7 +940,6 @@ state 44:
 
 	.	error
 
-error:  state 45: shift/reduce conflict (shift SEMICOLON, reduce by rule 40)
 
 state 45:
 
@@ -978,7 +958,6 @@ state 45:
 	exp : exp . GT exp 
 	exp : exp . exp_tail 
 
-	SEMICOLON	shift 31
 
 	exp_tail	goto 18
 
@@ -1126,7 +1105,6 @@ state 51:
 
 	.	error
 
-error:  state 52: shift/reduce conflict (shift SEMICOLON, reduce by rule 50)
 
 state 52:
 
@@ -1172,7 +1150,6 @@ state 53:
 
 	.	reduce by rule 25
 
-error:  state 54: shift/reduce conflict (shift SEMICOLON, reduce by rule 58)
 
 state 54:
 
@@ -1207,7 +1184,6 @@ state 54:
 
 	.	reduce by rule 58
 
-error:  state 55: shift/reduce conflict (shift SEMICOLON, reduce by rule 57)
 
 state 55:
 
@@ -1242,7 +1218,6 @@ state 55:
 
 	.	reduce by rule 57
 
-error:  state 56: shift/reduce conflict (shift SEMICOLON, reduce by rule 62)
 
 state 56:
 
@@ -1287,7 +1262,6 @@ state 56:
 
 	.	error
 
-error:  state 57: shift/reduce conflict (shift SEMICOLON, reduce by rule 64)
 
 state 57:
 
@@ -1332,7 +1306,6 @@ state 57:
 
 	.	error
 
-error:  state 58: shift/reduce conflict (shift SEMICOLON, reduce by rule 61)
 
 state 58:
 
@@ -1377,7 +1350,6 @@ state 58:
 
 	.	error
 
-error:  state 59: shift/reduce conflict (shift SEMICOLON, reduce by rule 63)
 
 state 59:
 
@@ -1422,7 +1394,6 @@ state 59:
 
 	.	error
 
-error:  state 60: shift/reduce conflict (shift SEMICOLON, reduce by rule 60)
 
 state 60:
 
@@ -1467,7 +1438,6 @@ state 60:
 
 	.	error
 
-error:  state 61: shift/reduce conflict (shift SEMICOLON, reduce by rule 59)
 
 state 61:
 
@@ -1512,7 +1482,6 @@ state 61:
 
 	.	error
 
-error:  state 62: shift/reduce conflict (shift SEMICOLON, reduce by rule 43)
 
 state 62:
 
@@ -1531,13 +1500,11 @@ state 62:
 	exp : exp . GT exp 
 	exp : exp . exp_tail 
 
-	SEMICOLON	shift 31
 
 	exp_tail	goto 18
 
 	.	reduce by rule 43
 
-error:  state 63: shift/reduce conflict (shift SEMICOLON, reduce by rule 44)
 
 state 63:
 
@@ -1556,13 +1523,11 @@ state 63:
 	exp : exp . GT exp 
 	exp : exp . exp_tail 
 
-	SEMICOLON	shift 31
 
 	exp_tail	goto 18
 
 	.	reduce by rule 44
 
-error:  state 64: shift/reduce conflict (shift SEMICOLON, reduce by rule 42)
 
 state 64:
 
@@ -1581,7 +1546,6 @@ state 64:
 	exp : exp . GT exp 
 	exp : exp . exp_tail 
 
-	SEMICOLON	shift 31
 	TIMES	shift 28
 	DIVIDE	shift 27
 
@@ -1589,7 +1553,6 @@ state 64:
 
 	.	reduce by rule 42
 
-error:  state 65: shift/reduce conflict (shift SEMICOLON, reduce by rule 41)
 
 state 65:
 
@@ -1608,7 +1571,6 @@ state 65:
 	exp : exp . GT exp 
 	exp : exp . exp_tail 
 
-	SEMICOLON	shift 31
 	TIMES	shift 28
 	DIVIDE	shift 27
 
@@ -2110,7 +2072,6 @@ state 91:
 
 	.	error
 
-error:  state 92: shift/reduce conflict (shift SEMICOLON, reduce by rule 53)
 
 state 92:
 
@@ -2147,7 +2108,6 @@ state 92:
 
 	.	reduce by rule 53
 
-error:  state 93: shift/reduce conflict (shift SEMICOLON, reduce by rule 52)
 
 state 93:
 
@@ -2809,7 +2769,6 @@ state 127:
 
 	.	error
 
-error:  state 128: shift/reduce conflict (shift SEMICOLON, reduce by rule 51)
 
 state 128:
 
@@ -2855,7 +2814,6 @@ state 129:
 
 	.	reduce by rule 34
 
-error:  state 130: shift/reduce conflict (shift SEMICOLON, reduce by rule 49)
 
 state 130:
 
@@ -3086,7 +3044,6 @@ state 142:
 
 	.	reduce by rule 16
 
-error:  state 143: shift/reduce conflict (shift SEMICOLON, reduce by rule 54)
 
 state 143:
 
@@ -3191,5 +3148,5 @@ state 146:
 
 	.	error
 
-619 of 1174 action table entries left after compaction
+614 of 1169 action table entries left after compaction
 182 goto table entries

@@ -21,30 +21,30 @@ Group is
   parser/parse.sml
 
   (* Semantic Analysis *)
+  absyn/types.sml
+
   table/table.sig
   table/table.sml
   
   table/symbol.sml
 
-  (* IR *)
-
-  tree/tree.sml
-  tree/printtree.sml
-
-  ir/translate.sig
-  ir/translate.sml
+  semant/env.sig
+  semant/env.sml
 
   semant/semant.sig
   semant/semant.sml
-
-  absyn/types.sml
-
-  semant/env.sig
-  semant/env.sml
+  
+  (* IR *)
+  tree/tree.sml
+  tree/printtree.sml
 
   ir/temp.sig
   ir/temp.sml
 
+  ir/translate.sig
+  ir/translate.sml
+
+  (* Instruction Selection *)
   assem/frame.sig
   mips/mipsframe.sml
 
@@ -54,10 +54,11 @@ Group is
   assem/canon.sml
   assem/assem.sml
 
+  (* Liveness Analysis *)
   liveness/graph/funcgraph.sig
   liveness/graph/funcgraph.sml
 
   liveness/flow.sml
   liveness/nodekey.sml
   liveness/makegraph.sml
-  (* liveness/liveness.sml *)
+  liveness/liveness.sml

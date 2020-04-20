@@ -3,10 +3,10 @@ struct
     type temp = int
 
     val labelCount = ref 0
-    val temps = ref 100
+    val temps = ref 0
 
     fun reset () = 
-        let val () = temps := 100
+        let val () = temps := 0
             val () = labelCount := 0
         in
             ()
@@ -32,6 +32,12 @@ struct
 
     structure Set = SplaySetFn(TempOrd)
     structure Map = SplayMapFn(TempOrd)
+
+    type 'a map = 'a Map.map 
+    type set = Set.set
+
+    fun tempSetToString (ts) = 
+      (Set.foldl (fn (item, s) => s ^ ", " ^ (makestring item)) "" ts)
 			 
     fun newlabel() = 
 	let 

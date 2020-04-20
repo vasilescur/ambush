@@ -19,9 +19,9 @@ struct
 
   (* Converts an instruction to one node
       Returns: a node *)
-  fun makenode (A.OPER {assem, dst, src, jump}) = (assem, dst, src, false, jump)
-    | makenode (A.LABEL {assem, lab}) = (assem, [], [], false, NONE)
-    | makenode (A.MOVE {assem, dst, src}) = (assem, [dst], [src], true, NONE)
+  fun makenode (A.OPER {assem, dst, src, jump}) = (assem, dst, src, NONE, jump)
+    | makenode (A.LABEL {assem, lab}) = (assem, [], [], NONE, NONE)
+    | makenode (A.MOVE {assem, dst, src}) = (assem, [dst], [src], SOME(dst, src), NONE)
 
 
   (* Adds all of the instructions as nodes to the graph
@@ -45,12 +45,11 @@ struct
                                   val nodeValue = case nodeOption of 
                                                       SOME (nodeVal) => nodeVal
                                                     | NONE => (Err.error 0 ("name = " ^ Symbol.name lbl); raise NoneJump ("name = " ^ Symbol.name lbl))
-                              in  G.addEdge (graph, {from=G.getNodeID (node), 
-                                                     to=G.getNodeID (valOf (S.look (labelmap, lbl)))})
+                              in  G.addEdge (graph, {from=G.getNodeID (node),
+                                                     to=G.getNodeID nodeValue})
                               end)
           graph 
           jumps
-                              
 
   (* Adds edges to the control flow graph
       Returns: graph *)
@@ -60,7 +59,7 @@ struct
         in  (case jump of
                 NONE => addedges (addnextedge (graph, node, prev), 
                                   labelmap, nodes, SOME (node))
-              | SOME (jumps) => addedges (addnextedge (addjumps (graph, labelmap, node, jumps), node, prev), labelmap, nodes, SOME(node)))
+              | SOME (jumps) => addedges (addnextedge (addjumps (graph, labelmap, node, jumps), node, prev), labelmap, nodes, NONE))
         end
 
   fun instrs2graph (instrs) = let val (nodeGraph, labelmap) = addnodes (G.empty, instrs, S.empty, 0)

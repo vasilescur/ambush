@@ -62,6 +62,8 @@ fun a_IGNORE_ME x = 3;
 
 %nonassoc EQ NEQ LT LE GT GE
 
+%left SEMICOLON
+
 %left PLUS MINUS
 %left TIMES DIVIDE
 
@@ -228,7 +230,7 @@ exp:
   |   IF exp THEN exp   %prec DO        (A.IfExp({test=exp1, then'=exp2, else'=NONE, pos=IFleft}))
 
   (* Loops *)
-  |   WHILE exp DO exp                  (A.WhileExp({test=exp1, body=exp, pos=WHILEleft}))
+  |   WHILE exp DO exp                  (A.WhileExp({test=exp1, body=exp2, pos=WHILEleft}))
   |   FOR ID ASSIGN exp TO exp DO exp   (A.ForExp({var=Symbol.symbol ID, escape=(ref true), lo=exp1, hi=exp2, body=exp3, pos=FORleft}))
 
   |   BREAK                             (A.BreakExp(BREAKleft))
@@ -249,7 +251,7 @@ exp:
   |   exp GT exp          (A.OpExp({left=exp1, oper=A.GtOp, right=exp2, pos=exp1left}))
 
   (* Expression sequence *)
-  |   exp exp_tail            (A.SeqExp((exp, expleft)::exp_tail))
+  |   exp exp_tail        (A.SeqExp((exp, expleft)::exp_tail))
 
 
 (* Allow dealing with sequences of expressions, such as in the first body

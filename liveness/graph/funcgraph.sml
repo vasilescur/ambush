@@ -113,7 +113,7 @@ struct
     NodeSet.member(NodeSet.union(s1,p1),n2) orelse
     NodeSet.member(NodeSet.union(s2,p2),n1)
 
-  fun printGraph stringify g = 
+  fun printGraph stringify g printSuccPred = 
       let fun println x = print(x ^"\n")
           fun stringNid nid = 
             let val (_,data,_,_) = getNode(g,nid)
@@ -123,13 +123,38 @@ struct
           fun prOneNode(nid,data,succs,preds) = 
               let val s = stringify(nid,data)
                   val () = println("Node: " ^ s)
-                  val () = println(" -> Successors:")
-                  val () = prSet succs
-                  val () = println(" -> Predecessors:")
-                  val () = prSet preds
+                  val _ = (if printSuccPred then
+                    (println(" -> Successors:");
+                    prSet succs;
+                    println(" -> Predecessors:");
+                    prSet preds)
+                  else ())
               in  ()
               end
       in  NodeMap.app prOneNode g
+      end
+
+  fun printGraphVis stringify g = 
+      let fun println x = print(x ^"\n")
+          fun stringNid nid = 
+            let val (_,data,_,_) = getNode(g,nid)
+            in  stringify(nid,data)
+            end
+          fun prSet s = NodeSet.app (println o stringNid) s
+
+          fun prNodeName (nid, data, succs, preds) =
+            let val s = stringify(nid, data)
+                val _ = println("\"" ^ s ^ "\"")
+            in  ()
+            end
+
+          fun prOneAllSuccs(nid,data,succs,preds) = 
+              let val thisName = stringify(nid,data)
+                  val _ = NodeSet.app ((fn node => (print ("\"" ^ thisName ^ "\" \"" ^ node ^ "\"\n"))) o stringNid) succs
+              in  ()
+              end
+      in  NodeMap.app prNodeName g;
+          NodeMap.app prOneAllSuccs g
       end
     
 end

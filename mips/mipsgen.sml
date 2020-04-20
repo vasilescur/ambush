@@ -29,11 +29,11 @@ struct
               (* (e1 + i) <-- e2 *)
               | munchStm(T.MOVE(T.MEM(T.BINOP(T.PLUS,e1,T.CONST i)),e2)) =
                   emit(A.OPER{assem="sw `s0, " ^ Int.toString i ^ "(`s1)",
-                  src=[munchExp e1, munchExp e2],
+                  src=[munchExp e2, munchExp e1],
                   dst=[],jump=NONE})
               | munchStm(T.MOVE(T.MEM(T.BINOP(T.PLUS,T.CONST i,e1)),e2)) =
                   emit(A.OPER{assem="sw `s0, " ^ Int.toString i ^ "(`s1)",
-                  src=[munchExp e1, munchExp e2],
+                  src=[munchExp e2, munchExp e1],
                   dst=[],jump=NONE})
 
               (* (e1 - i) <-- e2 *)
@@ -50,7 +50,7 @@ struct
               (* (i) <-- e2 *)
               | munchStm(T.MOVE(T.MEM(e1), e2)) =
                   emit(A.OPER{assem="sw `s0, 0(`s1)",
-                  src=[munchExp e1, munchExp e2],
+                  src=[munchExp e2, munchExp e1],
                   dst= [] ,jump=NONE})
 
 
@@ -101,7 +101,7 @@ struct
               (* Branches *)
 
               | munchStm (T.JUMP(T.NAME lab, _)) =
-                emit(A.OPER{assem="jr `j0",src=[],dst=[],jump=SOME([lab])})
+                emit(A.OPER{assem="j `j0",src=[],dst=[],jump=SOME([lab])})
 
               | munchStm (T.JUMP(e, labels)) =
                 emit(A.OPER{assem="jr `j0",src=[munchExp e],
@@ -300,6 +300,49 @@ struct
                     result(fn r => emit(A.OPER{assem="xor `d0, `s0, `s1",
                                                src=[munchExp e1, munchExp e2], dst=[r], jump=NONE}))
 
+                (* Relational Operations *)
+
+                | munchExp (T.RELOP (T.GE, e1, e2)) =
+                    result(fn r => emit(A.OPER{assem="sge `d0, `s0, `s1",
+                                               src=[munchExp e1, munchExp e2], dst=[r], jump=NONE}))
+
+                | munchExp (T.RELOP (T.UGE, e1, e2)) =
+                    result(fn r => emit(A.OPER{assem="sgeu `d0, `s0, `s1",
+                                               src=[munchExp e1, munchExp e2], dst=[r], jump=NONE}))
+
+                | munchExp (T.RELOP (T.GT, e1, e2)) =
+                    result(fn r => emit(A.OPER{assem="sgt `d0, `s0, `s1",
+                                               src=[munchExp e1, munchExp e2], dst=[r], jump=NONE}))
+
+                | munchExp (T.RELOP (T.UGT, e1, e2)) =
+                    result(fn r => emit(A.OPER{assem="sgtu `d0, `s0, `s1",
+                                               src=[munchExp e1, munchExp e2], dst=[r], jump=NONE}))
+
+                | munchExp (T.RELOP (T.LT, e1, e2)) =
+                    result(fn r => emit(A.OPER{assem="slt `d0, `s0, `s1",
+                                               src=[munchExp e1, munchExp e2], dst=[r], jump=NONE}))
+
+                | munchExp (T.RELOP (T.ULT, e1, e2)) =
+                    result(fn r => emit(A.OPER{assem="sltu `d0, `s0, `s1",
+                                               src=[munchExp e1, munchExp e2], dst=[r], jump=NONE}))
+
+                | munchExp (T.RELOP (T.LE, e1, e2)) =
+                    result(fn r => emit(A.OPER{assem="sle `d0, `s0, `s1",
+                                               src=[munchExp e1, munchExp e2], dst=[r], jump=NONE}))
+
+                | munchExp (T.RELOP (T.ULE, e1, e2)) =
+                    result(fn r => emit(A.OPER{assem="sleu `d0, `s0, `s1",
+                                               src=[munchExp e1, munchExp e2], dst=[r], jump=NONE}))
+
+                | munchExp (T.RELOP (T.EQ, e1, e2)) =
+                    result(fn r => emit(A.OPER{assem="seq `d0, `s0, `s1",
+                                               src=[munchExp e1, munchExp e2], dst=[r], jump=NONE}))
+                
+                | munchExp (T.RELOP (T.NE, e1, e2)) =
+                    result(fn r => emit(A.OPER{assem="sne `d0, `s0, `s1",
+                                               src=[munchExp e1, munchExp e2], dst=[r], jump=NONE}))
+
+
                 (* Shifts *)
                 | munchExp(T.BINOP(T.LSHIFT,e1,T.CONST i)) =
                     result(fn r => emit(A.OPER{assem="sll `d0, `s0 " ^ Int.toString i,
@@ -328,6 +371,8 @@ struct
                 | munchExp(T.BINOP(T.ARSHIFT,e1,e2)) =
                     result(fn r => emit(A.OPER{assem="srav `d0, `s0, `s1",
                                                src=[munchExp e1, munchExp e2], dst=[r], jump=NONE}))
+
+
 
                 (* Registers *)
                 | munchExp(T.TEMP t) = t

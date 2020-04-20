@@ -114,14 +114,16 @@ struct
 
   fun procEntryExit1(frame', stm') = stm'
 
+  (* TODO: add the sink back (see page 208) *)
   fun procEntryExit2(frame, body) =
-        body @
+        body
+        (* body @
         [A.OPER{assem="",
         src =[ZERO,RA,SP]@calleesaves,
-        dst=[], jump=SOME[]}]
+        dst=[], jump=SOME[]}] *)
 
   fun procEntryExit3({name, formals, numLocals, curOffset}, body) =
-        {prolog = "PROCEDURE " ^ Symbol.name name ^ "\n",
+        {prolog = "PROCEDURE " ^ Symbol.name name ^ "\n" ^ Symbol.name name ^ ": \n",
          body = body,
          epilog = "END " ^ Symbol.name name ^ "\n"}
 

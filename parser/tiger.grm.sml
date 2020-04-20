@@ -213,11 +213,11 @@ val table=let val actionRows =
 \\186\000\000\000\
 \\187\000\000\000\
 \\188\000\000\000\
-\\189\000\007\000\033\000\000\000\
-\\190\000\007\000\033\000\018\000\030\000\019\000\029\000\000\000\
-\\191\000\007\000\033\000\018\000\030\000\019\000\029\000\000\000\
-\\192\000\007\000\033\000\000\000\
-\\193\000\007\000\033\000\000\000\
+\\189\000\000\000\
+\\190\000\018\000\030\000\019\000\029\000\000\000\
+\\191\000\018\000\030\000\019\000\029\000\000\000\
+\\192\000\000\000\
+\\193\000\000\000\
 \\194\000\000\000\
 \\195\000\000\000\
 \\196\000\000\000\
@@ -1079,10 +1079,10 @@ end)
 end
 |  ( 53, ( ( _, ( MlyValue.exp exp2, _, exp2right)) :: _ :: ( _, ( 
 MlyValue.exp exp1, _, _)) :: ( _, ( _, (WHILEleft as WHILE1left), _))
- :: rest671)) => let val  result = MlyValue.exp (fn _ => let val  (exp
- as exp1) = exp1 ()
+ :: rest671)) => let val  result = MlyValue.exp (fn _ => let val  exp1
+ = exp1 ()
  val  exp2 = exp2 ()
- in (A.WhileExp({test=exp1, body=exp, pos=WHILEleft}))
+ in (A.WhileExp({test=exp1, body=exp2, pos=WHILEleft}))
 end)
  in ( LrTable.NT 1, ( result, WHILE1left, exp2right), rest671)
 end

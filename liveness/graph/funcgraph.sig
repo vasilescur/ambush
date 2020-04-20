@@ -105,6 +105,8 @@ val isAdjacent: 'a node * 'a node -> bool
  * that says how to convert any given node's data into a
  * string, and it will print everything out 
  *)
-val printGraph:  ((nodeID * 'a) -> string) -> 'a graph  -> unit
+val printGraph:  ((nodeID * 'a) -> string) -> 'a graph  -> bool -> unit
+
+val printGraphVis : ((nodeID * 'a) -> string) -> 'a graph  -> unit
 
 end
