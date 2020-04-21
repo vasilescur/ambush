@@ -197,12 +197,10 @@ the code is represented as a set of trees consisting of basic operations. For
 example, the following Tiger code:
 
 ```sml
-let
-	var a := 7
-	var b := 9
-	var c := 3
-in
-	c := a + b
+let var a := 7
+    var b := 9
+    var c := 3
+in  c := a + b
 end
 ```
 
@@ -260,15 +258,14 @@ signifies that those temps are live at the same time.
 Here is an example of a Liveness Analysis on the following Tiger program:
 
 ```sml
-let
-	var a := 7
-	var b := 9
-	var c := 3
+let var a := 7
+    var b := 9
+    var c := 3
+    
+    function add(a : int, b : int) : int =
+      a + b
 
-	function add(a : int, b : int) : int =
-		a + b
-in
-	c := add(a, b)
+in  c := add(a, b)
 end
 ```
 
