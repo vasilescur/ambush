@@ -381,11 +381,19 @@ not be considered part of our official submission.
 
 ![Binary tree pants meme](https://i.kym-cdn.com/photos/images/original/001/272/773/6dd.jpg)
 
+-----
+
 ![Functional programming meme](https://pics.me.me/do-you-smoke-functional-very-time-programming-1s-more-effective-36314444.png)
+
+-----
 
 ![Commit messages meme](https://pics.me.me/me-i-should-give-this-commit-a-proper-descriptive-message-58056481.png)
 
+-----
+
 >Do you want us to send the cocaine directly to your email? 
 > -- Jake Derry, 2020, somehow contextually related to this project
+
+-----
 
 ![image](https://user-images.githubusercontent.com/10100323/79821281-584ea380-835c-11ea-88fa-584e40e11d55.png)
