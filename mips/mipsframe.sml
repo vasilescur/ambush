@@ -21,6 +21,8 @@ struct
 
   (* Register Lists *)
 
+  val ZERO = Temp.newtemp ()
+
   (* Results and evaluation *)
   val v0 = Temp.newtemp ()
   val v1 = Temp.newtemp ()
@@ -56,12 +58,11 @@ struct
 
   (* Special registers *)
   val FP = Temp.newtemp ()
-  val RV = Temp.newtemp ()
+  val RV = v0
 
   val SP = Temp.newtemp ()
   val RA = Temp.newtemp ()
 
-  val ZERO = Temp.newtemp ()
   val GP = Temp.newtemp ()
 
 
@@ -69,7 +70,7 @@ struct
   val specialargs = [RV, FP, SP, RA]
   val argregs = [a0, a1, a2, a3]
   val calleesaves = [s0, s1, s2, s3, s4, s5, s6, s7]
-  val callersaves = [t0, t1, t2, t3, t4, t5, t6, t7]
+  val callersaves = [(*t0, t1, t2, t3, t4, t5, t6, t7*)]
 
   val reglist =
     [("$a0", a0), ("$a1", a1), ("$a2", a2), ("$a3", a3), 

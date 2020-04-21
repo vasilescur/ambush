@@ -44,7 +44,7 @@ struct
     foldl (fn (lbl, graph) => let val nodeOption = S.look (labelmap, lbl)
                                   val nodeValue = case nodeOption of 
                                                       SOME (nodeVal) => nodeVal
-                                                    | NONE => (Err.error 0 ("name = " ^ Symbol.name lbl); raise NoneJump ("name = " ^ Symbol.name lbl))
+                                                    | NONE => raise NoneJump ("name = " ^ Symbol.name lbl)
                               in  G.addEdge (graph, {from=G.getNodeID (node),
                                                      to=G.getNodeID nodeValue})
                               end)
@@ -57,9 +57,13 @@ struct
     | addedges (graph, labelmap, node::nodes, prev) = 
         let val (_,_,_,_,jump) = G.nodeInfo (node)
         in  (case jump of
-                NONE => addedges (addnextedge (graph, node, prev), 
+                NONE => addedges (addnextedge (graph, node, prev),
                                   labelmap, nodes, SOME (node))
-              | SOME (jumps) => addedges (addnextedge (addjumps (graph, labelmap, node, jumps), node, prev), labelmap, nodes, NONE))
+              | SOME (jumps) => let val _ = ()
+                                in  addedges (addnextedge (addjumps (graph, labelmap, node, jumps), node, prev), labelmap, nodes, NONE)
+                                end
+                                handle NoneJump (str) => addedges (addnextedge (graph, node, prev), labelmap, nodes, SOME(node)))
+                                
         end
 
   fun instrs2graph (instrs) = let val (nodeGraph, labelmap) = addnodes (G.empty, instrs, S.empty, 0)

@@ -35,6 +35,10 @@ struct
             val _ =  Liveness.showLiveGraph liveGraph
             
             (* Convert to an interference graph *)
+            val Liveness.IGRAPH {graph=graph', tnode=tnode', gtemp=gtemp', moves=moves'} = Liveness.interferenceGraph graph
+
+            val _ = print "\n--- Interference Graph for usage in https://csacademy.com/app/graph_editor/ : ---\n"
+            val _ = Liveness.G.printGraphVis (Liveness.printNodeForVis) graph'
             (* TODO *)
         in  (TextIO.output (out, prolog); (app (fn i => TextIO.output(out, (format0 i) ^ "\n")) instrs); TextIO.output (out, epilog))
         end
@@ -54,6 +58,6 @@ struct
            val frags = ((*FindEscape.prog absyn;*) S.transProg absyn)
        in  withOpenFile (filename ^ ".s") 
 	                      (fn out => (app (emitproc out) (List.rev frags)))
+       handle S.TypeCheckError => (print "Compilation failed due to type checking error")
        end
-
 end

@@ -6,6 +6,9 @@ struct
   structure S = Symbol
   structure T = Types
 
+  exception TypeCheckFailure of string (* An internal failure that should never be reached *)
+  exception TypeCheckError
+
   type exp = R.exp
 
   type frag = R.frag
@@ -15,10 +18,14 @@ struct
 
   type expty = {exp: R.exp, ty: T.ty}
 
+  val fail = ref false
+
+  fun reset () = (fail := false; R.reset ())
+
   (* Return value for cases where type checking failed *)
   val err_result = {exp = R.unfinished, ty = T.NIL}
 
-  val err = ErrorMsg.error
+  val err = (fail := true; ErrorMsg.error)
 
   (* Shortcut function for type errors *)
   fun type_err (exp, act, pos) =
@@ -115,7 +122,7 @@ struct
                                                           NONE => (err pos "Unrecognized type"; S.enter (tenv, name, T.ARRAY(T.BOTTOM, ref ())))
                                                         | SOME(arrayType) => S.enter(tenv, name, T.ARRAY (arrayType, ref ()))
                                                       end
-            val {name, ty, pos}::more = types
+            val {name, ty, pos} = List.nth (types, 1)
             val newTenv = ((if (List.foldl checkAbstract true types)
                             then err pos "No concrete type declared in recursive type declaration"
                             else ());
@@ -172,6 +179,7 @@ struct
                               | SOME(E.FunEntry {level, label, formals, result}) => (R.procedureEntryExit (level, #exp bodyExpty, label); 
                                                                                      result := (#ty bodyExpty); 
                                                                                      venv)
+                              | SOME(_) => raise TypeCheckFailure "Found variable name when looking for function signature"
                   in case result of 
                       NONE => {tenv=tenv, venv=newVenv}
                     | SOME (resultSym, resultPos) => (checkTypesEq (#ty bodyExpty, findType (resultSym, tenv), resultPos, "Function return type does not match body type check"); {tenv=tenv, venv=venv})
@@ -188,8 +196,12 @@ struct
           | trexp (A.StringExp (string, pos)) = {exp=(R.stringIR (string)), ty=T.STRING}
           | trexp (A.NilExp) = {exp=(R.nilIR ()), ty=T.NIL}
           | trexp (A.CallExp ({func, args, pos})) = 
-              let fun checkArgs (formal::formals, arg::args) =  (* Only checks the first arg and formal match *)
-                    checkTypesEq (formal, #ty (trexp arg), pos, "Argument does not match function signature")
+              let fun checkArgs ([], []) = ()
+                    | checkArgs (formals, []) = err pos "Function takes more arguments than expected"
+                    | checkArgs ([], args) = err pos "Too many arguments for function signature"
+                    | checkArgs (formal::formals, arg::args) =
+                          (checkTypesEq (formal, #ty (trexp arg), pos, "Argument does not match function signature"); checkArgs (formals, args))
+
                   fun translateArg (exp) = #exp (trexp exp)
                   val optFunc = S.look (venv, func)
               in case optFunc of 
@@ -203,6 +215,7 @@ struct
               let val (reqFields, recordType) = case (S.look (tenv, typ)) of
                                     NONE => (err pos "Record undefined"; ([], T.BOTTOM))
                                   | SOME (T.RECORD (reqFields, unique)) => (reqFields, T.RECORD (reqFields, unique))
+                                  | SOME (_) => (err pos "Record expression requires a record type"; ([], T.BOTTOM))
                   fun checkFields ([], []) = ()
                     | checkFields ([], reqFields) = (err pos "Not enough fields for record type")
                     | checkFields (fields, []) = (err pos "Too many fields for record type")
@@ -331,7 +344,7 @@ struct
     let
       val _ = ()
 
-      val _ = R.reset ()
+      val _ = reset ()
 
       (* Create the tenv and venv *)
       val venv : venv = E.base_venv
@@ -342,6 +355,8 @@ struct
 
       (* Recurse through the abstract syntax tree *)
       val ir = #exp ((transExp (mainLevel, mainLabel, venv, tenv)) absyn)
+
+      val _ = if (!fail) then (raise TypeCheckError) else ()
 
     in
       R.procedureEntryExit (mainLevel, ir, mainLabel);

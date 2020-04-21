@@ -1,9 +1,0 @@
-PROCEDURE L22
-L27:
-MISSING EXP
-sw t124, ~4(t170)
-lw t171, ~4(t124)
-jr L26
-L26:
-
-END L22
