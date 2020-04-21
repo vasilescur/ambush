@@ -179,6 +179,176 @@ LetExp([
   SimpleVar(arr1)))
 ```
 
+## Type Checking
+
+Our type checker helps the user find typing issues within their program to
+help debug their programs when the type checker fails. In addition, there are
+some conditions when the type checker fails because of an internal issue. These
+conditions are noted by raising an exception that causes the compiler to crash
+and currently, these conditions are unreachable.
+
+After type checking the entire program (which helps users find the issues within 
+their programs), the rest of the compilation process does not continue.
+
+## Intermediate Representation (IR)
+
+The next stage is conversion to Intermediate Representation, a format in which
+the code is represented as a set of trees consisting of basic operations. For 
+example, the following Tiger code:
+
+```sml
+let
+	var a := 7
+	var b := 9
+	var c := 3
+in
+	c := a + b
+end
+```
+
+Translates to the following IR (comments added for explanation):
+
+```sml
+(* Assign initial values to variables on stack *)
+MOVE(MEM (BINOP (PLUS, TEMP tt25, CONST ~4)),
+     CONST 7)
+MOVE(MEM (BINOP (PLUS, TEMP tt25, CONST ~8)),
+     CONST 9)
+MOVE(MEM (BINOP (PLUS, TEMP tt25, CONST ~12)),
+     CONST 3)
+
+(* do c <- a + b, where (a, b, c) are on stack *)
+MOVE(MEM (BINOP (PLUS, TEMP tt25, CONST ~12)),
+     BINOP(PLUS, MEM (BINOP (PLUS, TEMP tt25, CONST ~4)),
+                 MEM (BINOP (PLUS, TEMP tt25, CONST ~8))))
+```
+
+## Instruction Selection 
+In order to produce MIPS assembly language instructions, the IR must be 
+converted to instructions through the Instruction Selection process. 
+
+For example, Instruction Selection produces the following output for the IR
+above:
+
+```mips
+PROCEDURE L0
+L0: 
+L2:
+addi t0, r0, 7
+sw t0, ~4(t25)
+addi t1, r0, 9
+sw t1, ~8(t25)
+addi t2, r0, 3
+sw t2, ~12(t25)
+lw t4, ~4(t25)
+lw t5, ~8(t25)
+add t3, t4, t5
+sw t3, ~12(t25)
+j L1
+L1:
+END L0
+```
+ 
+
+## Liveness Analysis
+
+The liveness analysis stage first builds a control-flow graph of the program,
+and then computes the "liveness" of each temp at every node in the graph. Then,
+it generates an interference graph, where every node is a temp and every edge 
+signifies that those temps are live at the same time.
+
+Here is an example of a Liveness Analysis on the following Tiger program:
+
+```sml
+let
+	var a := 7
+	var b := 9
+	var c := 3
+
+	function add(a : int, b : int) : int =
+		a + b
+in
+	c := add(a, b)
+end
+```
+
+This produces the code:
+
+```
+PROCEDURE L1
+L1: 
+L3:
+add t3, t1, t2
+j L2
+L2:
+END L1
+PROCEDURE L0
+L0: 
+L5:
+addi t6, r0, 7
+sw t6, ~4(t25)
+addi t7, r0, 9
+sw t7, ~8(t25)
+addi t8, r0, 3
+sw t8, ~12(t25)
+addi t9, t25, ~12
+move t5, t9
+move t3, t25
+lw t10, ~4(t25)
+move t4, t10
+lw t11, ~8(t25)
+move t5, t11
+jal L1
+move t4, t26
+sw t4, 0(t5)
+j L4
+L4:
+END L0
+```
+
+Control-flow Graph:
+
+![cfg](https://user-images.githubusercontent.com/10100323/79820219-bd54ca00-8359-11ea-9952-177c54baf053.png)
+
+
+
+Liveness Results:
+
+```
+Node: nid = 0   liveIn:  , t25  liveOut: , t25  move:    N/A
+Node: nid = 1   liveIn:  , t25  liveOut: , t1, t25      move:    N/A
+Node: nid = 2   liveIn:  , t1, t25      liveOut: , t25  move:    N/A
+Node: nid = 3   liveIn:  , t25  liveOut: , t25  move:    N/A
+Node: nid = 4   liveIn:  , t25  liveOut: , t2, t25      move:    N/A
+Node: nid = 5   liveIn:  , t2, t25      liveOut: , t2, t4, t25  move:    N/A
+Node: nid = 6   liveIn:  , t2, t4, t25  liveOut: , t2, t4, t5, t25      move:    N/A
+Node: nid = 7   liveIn:  , t2, t4, t5, t25      liveOut: , t2, t3, t25  move:    N/A
+Node: nid = 8   liveIn:  , t2, t3, t25  liveOut: , t25  move:    N/A
+Node: nid = 9   liveIn:         liveOut:        move:    N/A
+Node: nid = 10  liveIn:         liveOut:        move:    N/A
+Node: nid = 11  liveIn:  , t25  liveOut: , t25  move:    N/A
+Node: nid = 12  liveIn:  , t25  liveOut: , t6, t25      move:    N/A
+Node: nid = 13  liveIn:  , t6, t25      liveOut: , t0, t25      move:    t0 <- t6
+Node: nid = 14  liveIn:  , t0, t25      liveOut: , t0, t8, t25  move:    N/A
+Node: nid = 15  liveIn:  , t0, t8, t25  liveOut: , t0, t25      move:    N/A
+Node: nid = 16  liveIn:  , t0, t25      liveOut: , t0, t9, t25  move:    N/A
+Node: nid = 17  liveIn:  , t0, t9, t25  liveOut: , t25  move:    N/A
+Node: nid = 18  liveIn:  , t25  liveOut: , t25  move:    N/A
+Node: nid = 19  liveIn:         liveOut:        move:    N/A
+```
+
+Which then generates the interference graph:
+
+![interference-graph](https://user-images.githubusercontent.com/10100323/79820223-c180e780-8359-11ea-80fb-b8e1de9e86f8.png)
+
+
+## Register Allocation
+
+```
+//TODO
+```
+
+
 ## Extra Credit Features
 
 ### Musical Tiger
