@@ -1,37 +1,53 @@
-structure T = Temp
-structure G = Liveness.G
+structure W = Worklist
 
 signature COLOR =
 sig
   type register
-  type allocation = register T.Map.map
+  type allocation
   val color: {interference: Liveness.igraph,
               initial: allocation,
               spillCost: Liveness.node -> int,
-              registers: register list} -> allocation * T.temp list
+              registers: register list} -> allocation * Temp.temp list
 end
 
 functor Color (F : FRAME) : COLOR =
 struct
   type register = F.register
   type allocation = register Temp.Map.map
-  fun color ({interference, initial, spillCost, registers}) = (initial, [])
-
-  fun setupWorklist (initial, {graph, tnode, gtemp, moves}) = 
-        let val empty = Worklist.empty
-            fun addToWorklist (node, worklist) = worklist
-        in G.foldNodes addToWorklist empty graph
+  fun color ({interference : Liveness.igraph, initial : allocation, spillCost : Liveness.node -> int, registers : F.register list}) =
+        let val worklist = setupWorklist (interference)
+        in (initial, [])
         end
 
-  fun simplify (graph, worklist, gtemp) =
+  and setupWorklist (Liveness.IGRAPH {graph : Temp.temp Flow.G.graph, tnode : Temp.temp -> Liveness.node, 
+                      gtemp : Liveness.node -> Temp.temp, moves : (Liveness.node * Liveness.node) list}) = 
+        let val registerTemps = (List.foldl (fn ((k, v), list) => k::list) [] (Temp.Map.listItemsi F.tempMap))
+            val initWorklist = W.init registerTemps
+            val moveSet = foldl (fn ((move1, move2), set) => 
+                                      Temp.Set.add (Temp.Set.add (set, gtemp move1), gtemp move2)) 
+                          Temp.Set.empty moves
+            fun addToWorklist (node, (worklist, moves)) = 
+                  let val temp = gtemp node
+                      val tempType = if Liveness.LiveG.degree (node) > List.length F.registers
+                                     then W.HIGH
+                                     else if Temp.Set.member (moveSet, temp)
+                                          then W.MOVE
+                                          else W.LOW
+                  in if (tempType = W.MOVE) then (W.add (worklist, tempType, temp), temp::moves)
+                                            else (W.add (worklist, tempType, temp), moves)
+                  end
+        in Liveness.LiveG.foldNodes addToWorklist (initWorklist, []) graph
+        end
+
+  and simplify (graph, worklist, gtemp) =
         let fun popNode (node, worklist) = 
                   let val temp = gtemp (node)
-                  in Worklist.simplify (worklist, temp)
+                  in W.stack (worklist, temp)
                   end
-        in G.foldNodes popNode worklist graph
+        in Liveness.LiveG.foldNodes popNode worklist graph
         end
 
-  fun select () = ()
+  and select () = ()
 
 
 end

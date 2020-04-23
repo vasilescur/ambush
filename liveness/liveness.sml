@@ -1,28 +1,15 @@
-(* signature LIVENESS =
-sig
-  type igraph
-  type node
-  type live
-  type livegraph
-  val interferenceGraph : Flow.flowgraph -> igraph * (node -> Temp.temp list)
-  val show : outstream * igraph -> unit
-  val flowToLiveGraph : Flow.graph -> livegraph
-  val showLiveGraph : livegraph -> unit
-
-end *)
-
-structure Liveness (*: LIVENESS*) =
+structure Liveness =
 struct
   structure TempSet = Temp.Set 
   structure TempMap = Temp.Map
-  structure G = Flow.G
+  structure LiveG = Flow.G
   
   exception NodeNotFound
 
   type temp_set = TempSet.set
 
-  type node = Temp.temp G.node
-  datatype igraph = IGRAPH of {graph: Temp.temp G.graph,
+  type node = Temp.temp LiveG.node
+  datatype igraph = IGRAPH of {graph: Temp.temp LiveG.graph,
                                tnode: Temp.temp -> node,
                                gtemp: node -> Temp.temp,
                                moves: (node * node) list}
@@ -33,65 +20,65 @@ struct
                liveIn: Temp.set,
                liveOut: Temp.set}
   
-  type livegraph = live G.graph
+  type livegraph = live LiveG.graph
 
   (* Calculates liveness and adds that info to flow graph *)
-  fun flowToLiveGraph (flow : Flow.node G.graph) : livegraph =
+  fun flowToLiveGraph (flow : Flow.node LiveG.graph) : livegraph =
     let fun convertFlowToLive () = 
               (* Copy original graph (only nodes) *)
-          let fun init (flowNode : Flow.node Flow.G.node, liveGraph : livegraph) = 
-                let val nid = G.getNodeID (flowNode)
-                    val (assm, def, use, move, jump) = G.nodeInfo (flowNode)
+          let fun init (flowNode : Flow.node LiveG.node, liveGraph : livegraph) = 
+                let val nid = LiveG.getNodeID (flowNode)
+                    val (assm, def, use, move, jump) = LiveG.nodeInfo (flowNode)
                     val newInfo = {def=TempSet.addList (TempSet.empty, def), 
                                         use=TempSet.addList (TempSet.empty, use), 
                                         move=move, 
                                         liveIn=Temp.Set.empty, 
                                         liveOut=Temp.Set.empty}
-                in  G.addNode (liveGraph, nid, newInfo)
+                in  LiveG.addNode (liveGraph, nid, newInfo)
                 end 
 
               (* Copy the edges *)
               fun copyEdges (oldNode, newGraph) =
-                let val nid = G.getNodeID (oldNode)
-                    val oldInfo = G.nodeInfo (oldNode)
-                    val oldSuccs = G.succs (oldNode)
-                    val newNode = G.getNode (newGraph, nid)
-                in List.foldl (fn (succ, graph) => G.addEdge (graph, {from=nid, to=succ})) newGraph oldSuccs
+                let val nid = LiveG.getNodeID (oldNode)
+                    val oldInfo = LiveG.nodeInfo (oldNode)
+                    val oldSuccs = LiveG.succs (oldNode)
+                    val newNode = LiveG.getNode (newGraph, nid)
+                in List.foldl (fn (succ, graph) => LiveG.addEdge (graph, {from=nid, to=succ})) newGraph oldSuccs
                 end 
 
               fun iterateLiveness (edgedGraph) =
                 let fun iterGraph (nid, graph) =
-                      let val node = G.getNode (graph, nid)
+                      let val node = LiveG.getNode (graph, nid)
 
-                          val info = G.nodeInfo node
+                          val info = LiveG.nodeInfo node
                           val {def=def, use=use, move=move, liveIn=oldLiveIn, liveOut=oldLiveOut} = info
                           
-                          val succs = G.succs (node)
-                          val preds = G.preds (node)
+                          val succs = LiveG.succs (node)
+                          val preds = LiveG.preds (node)
 
                           val newLiveIn = TempSet.union (use, (TempSet.difference (oldLiveOut, def)))
-                          val newLiveOut = foldl (fn (nid, set) => let val iterNode = G.getNode (graph, nid)
-                                                                       val lIn = #liveIn (G.nodeInfo iterNode)
+                          val newLiveOut = foldl (fn (nid, set) => let val iterNode = LiveG.getNode (graph, nid)
+                                                                       val lIn = #liveIn (LiveG.nodeInfo iterNode)
                                                                    in  TempSet.union (set, lIn)
                                                                    end) TempSet.empty succs
                           val unchanged : bool = ((TempSet.equal (oldLiveIn, newLiveIn)) andalso (TempSet.equal (oldLiveOut, newLiveOut)))
                           val newInfo = {def=def, use=use, move=move, liveIn=newLiveIn, liveOut=newLiveOut}
-                          val newGraph = G.changeNodeData (graph, nid, newInfo)
+                          val newGraph = LiveG.changeNodeData (graph, nid, newInfo)
                       in  (unchanged, newGraph)
                       end
 
                     fun untilUnchanged (true, graph) = graph
                       | untilUnchanged (false, graph) = 
-                          untilUnchanged (G.foldNodes (fn (node, (unchanged, graph)) => 
-                                                        (let val nid = G.getNodeID(node)
+                          untilUnchanged (LiveG.foldNodes (fn (node, (unchanged, graph)) => 
+                                                        (let val nid = LiveG.getNodeID(node)
                                                              val (newUnchanged, newGraph) = iterGraph (nid, graph)
                                                          in  (unchanged andalso newUnchanged, newGraph)
                                                          end )) (true, graph) graph)
                 in untilUnchanged (false, edgedGraph)
                 end 
 
-              val initializedGraph : livegraph = G.foldNodes init G.empty flow
-              val edgedGraph : livegraph = G.foldNodes copyEdges initializedGraph flow
+              val initializedGraph : livegraph = LiveG.foldNodes init LiveG.empty flow
+              val edgedGraph : livegraph = LiveG.foldNodes copyEdges initializedGraph flow
               val liveGraph : livegraph = iterateLiveness edgedGraph
 
           in liveGraph
@@ -103,8 +90,8 @@ struct
     fun interferenceGraph (flow) = let val liveGraph = flowToLiveGraph flow
                                       val (graph, tempMap, moves) = liveGraphToIGraph (liveGraph)
                                       
-                                      fun tnode (x) = G.getNode (graph, getNid (tempMap, x))
-                                      fun gtemp (x) = G.nodeInfo (x)
+                                      fun tnode (x) = LiveG.getNode (graph, getNid (tempMap, x))
+                                      fun gtemp (x) = LiveG.nodeInfo (x)
                                       
                                       val uniqueMoves =
                                         let fun identical ((f1, t1), (f2, t2)) = 
@@ -138,7 +125,7 @@ struct
       | _ => raise NodeNotFound
   and liveGraphToIGraph (lgraph) =
     let val tmap = TempMap.empty
-        val igraph = G.empty
+        val igraph = LiveG.empty
         
         val counter = ref 0
         
@@ -147,14 +134,14 @@ struct
               SOME (x) => (igraph, tmap)
             | NONE => let val nid = !counter
                           val _ = counter := nid + 1
-                      in  (G.addNode (igraph, nid, temp), TempMap.insert (tmap, temp, nid))
+                      in  (LiveG.addNode (igraph, nid, temp), TempMap.insert (tmap, temp, nid))
                       end 
         
         (* Insert all the temps *)
-        val (igraph, tmap) = G.foldNodes (fn (liveNode, (igraph, tmap)) =>
+        val (igraph, tmap) = LiveG.foldNodes (fn (liveNode, (igraph, tmap)) =>
                                             let val {def=def, use=use,
                                                      liveIn=liveIn, liveOut=liveOut,
-                                                     move=move} = G.nodeInfo liveNode
+                                                     move=move} = LiveG.nodeInfo liveNode
                                                 val (igraph, tmap) = TempSet.foldl insertTemp (igraph, tmap) def
                                                 val (igraph, tmap) = TempSet.foldl insertTemp (igraph, tmap) use 
                                             in  (igraph, tmap)
@@ -165,20 +152,20 @@ struct
         fun insertEdges (liveNode, (igraph, moves)) =
           let val {def=def, use=use,
                    liveIn=liveIn, liveOut=liveOut,
-                   move=move} = G.nodeInfo liveNode
+                   move=move} = LiveG.nodeInfo liveNode
               val moves = case move of 
                               SOME (mv) => mv::moves
                             | NONE => moves
               val igraph = case move of 
                               SOME (dst, src) => TempSet.foldl (fn (live, igraph) =>
                                                             if (live <> dst andalso live <> src) then
-                                                              G.doubleEdge (igraph, getNid (tmap, dst), getNid (tmap, live))
+                                                              LiveG.doubleEdge (igraph, getNid (tmap, dst), getNid (tmap, live))
                                                             else igraph)
                                                  igraph liveOut
                             | NONE => TempSet.foldl (fn (defVar, igraph) => (TempSet.foldl (
                                             fn (live, igraph) => 
                                               if (defVar <> live) then
-                                                G.doubleEdge (igraph, getNid (tmap, defVar), getNid (tmap, live))
+                                                LiveG.doubleEdge (igraph, getNid (tmap, defVar), getNid (tmap, live))
                                               else igraph)
                                             igraph liveOut))
                                           igraph def
@@ -192,7 +179,7 @@ struct
           in  (igraph, moves)
           end 
         
-        val (igraph, moves) = G.foldNodes insertEdges (igraph, []) lgraph 
+        val (igraph, moves) = LiveG.foldNodes insertEdges (igraph, []) lgraph 
         
     in (igraph, tmap, moves)
     end 
@@ -202,7 +189,7 @@ struct
 
   fun showLiveGraph (liveGraph : livegraph) = 
     (print "\n--- Live Graph: --- \n";
-     G.printGraph (fn (nid, liveObj:live) =>
+     LiveG.printGraph (fn (nid, liveObj:live) =>
                     let val liveIn : Temp.set = #liveIn liveObj
                         val liveOut : Temp.set = #liveOut liveObj
                         val move = #move liveObj
