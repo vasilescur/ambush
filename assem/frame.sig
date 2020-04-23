@@ -14,7 +14,8 @@ sig
 
   type register = string 
 
-  (* val registers : register list  *)
+  val tempMap: register Temp.Map.map
+  val registers: register list
 
   val argregs : Temp.temp list
   val callersaves : Temp.temp list 

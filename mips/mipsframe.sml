@@ -70,9 +70,9 @@ struct
   val specialargs = [RV, FP, SP, RA]
   val argregs = [a0, a1, a2, a3]
   val calleesaves = [s0, s1, s2, s3, s4, s5, s6, s7]
-  val callersaves = [(*t0, t1, t2, t3, t4, t5, t6, t7*)]
+  val callersaves = [t0, t1, t2, t3, t4, t5, t6, t7]
 
-  val reglist =
+  val regList =
     [("$a0", a0), ("$a1", a1), ("$a2", a2), ("$a3", a3), 
     
      ("$t0", t0), ("$t1", t1), ("$t2", t2), ("$t3", t3), 
@@ -83,6 +83,8 @@ struct
      
      ("$fp", FP), ("$v0", RV), ("$sp", SP), ("$ra", RA)]
 
+  val tempMap = List.foldl (fn ((name, temp), map) => Temp.Map.insert (map, temp, name)) Temp.Map.empty regList
+  val registers = List.foldl (fn ((name, temp), registers) => name::registers) [] regList
 
   val wordSize = 4 
   val argRegisters = 4
@@ -90,8 +92,6 @@ struct
   (* Getters *)
   fun name {name = symbol, formals = _, numLocals = _, curOffset = _} = Symbol.name symbol
   fun formals {name = _, formals = formals, numLocals = _, curOffset = _} = formals
-
-
 
   fun allocateLocal frame' escape = 
         let

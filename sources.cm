@@ -62,3 +62,6 @@ Group is
   liveness/nodekey.sml
   liveness/makegraph.sml
   liveness/liveness.sml
+
+  regalloc/color.sml
+  regalloc/regalloc.sml
