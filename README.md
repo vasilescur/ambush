@@ -21,6 +21,29 @@ Diego. Archived from the original on July 4, 2013.</sub>
 
 ### Usage Instructions
 
+To test the compiler, open a terminal in the main folder and run:
+
+```bash
+sml run.sml
+```
+
+In the resulting SML REPL, execute
+
+```sml
+runTest n;
+```
+
+To run the test case with the number `n`. To compile an arbitrary Tiger 
+program, instead execute
+
+```sml
+Main.compile "testcases/myProgram";
+```
+
+(**NOTE:** Without the `.tig` extension)
+
+#### Old Instructions: 
+
 To use the lexer, first open an `sml` REPL in the root folder of this 
 repository. Then, run the following command to compile the project:
 
