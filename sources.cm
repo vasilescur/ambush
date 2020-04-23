@@ -64,4 +64,5 @@ Group is
   liveness/liveness.sml
 
   regalloc/color.sml
+  regalloc/worklist.sml
   regalloc/regalloc.sml
