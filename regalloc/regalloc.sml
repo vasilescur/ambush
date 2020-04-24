@@ -20,7 +20,7 @@ struct
         val (allocation, spills) = C.color ({interference=interference,
                                              initial=F.tempMap,
                                              spillCost=(fn (_) => 1),
-                                             registers=F.registers})
-    in (instrs, allocation)
+                                             registers=F.availableRegisters})
+    in  (instrs, allocation)
     end
 end

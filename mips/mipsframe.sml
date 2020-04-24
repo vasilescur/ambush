@@ -5,15 +5,18 @@ struct
 
   structure A = Assem
   structure S = Symbol
+
   datatype access = 
       InFrame of int 
     | InReg of Temp.temp
 
-  type frame = {name: Temp.label, formals: access list,
-                numLocals: int ref, curOffset: int ref}
+  type frame = {name      : Temp.label, 
+                formals   : access list,
+                numLocals : int ref, 
+                curOffset : int ref}
 
   datatype frag =
-      PROC of {body: Tree.stm, frame: frame} 
+      PROC   of {body : Tree.stm, frame : frame} 
     | STRING of Temp.label * string
 
 
@@ -25,13 +28,16 @@ struct
 
   (* Results and evaluation *)
   val v0 = Temp.newtemp ()
+  val RV = v0
   val v1 = Temp.newtemp ()
+  val valregs = [v0, v1]
 
   (* Argument registers *)
   val a0 = Temp.newtemp ()
   val a1 = Temp.newtemp ()
   val a2 = Temp.newtemp ()
   val a3 = Temp.newtemp ()
+  val argregs = [a0, a1, a2, a3]
 
   (* Temporary (caller-saved) *)
   val t0 = Temp.newtemp ()
@@ -45,6 +51,7 @@ struct
 
   val t8 = Temp.newtemp ()
   val t9 = Temp.newtemp ()
+  val callersaves = [t0, t1, t2, t3, t4, t5, t6, t7]
 
   (* Saved (callee-saved) *)
   val s0 = Temp.newtemp ()
@@ -55,22 +62,18 @@ struct
   val s5 = Temp.newtemp ()
   val s6 = Temp.newtemp ()
   val s7 = Temp.newtemp ()
+  val calleesaves = [s0, s1, s2, s3, s4, s5, s6, s7] 
 
   (* Special registers *)
   val FP = Temp.newtemp ()
-  val RV = v0
-
   val SP = Temp.newtemp ()
   val RA = Temp.newtemp ()
 
   val GP = Temp.newtemp ()
+  val specialregs = [RV, FP, SP, RA]
 
 
   (* Categories of registers *)
-  val specialargs = [RV, FP, SP, RA]
-  val argregs = [a0, a1, a2, a3]
-  val calleesaves = [s0, s1, s2, s3, s4, s5, s6, s7]
-  val callersaves = [t0, t1, t2, t3, t4, t5, t6, t7]
 
   val regList =
     [("$a0", a0), ("$a1", a1), ("$a2", a2), ("$a3", a3), 
@@ -84,7 +87,14 @@ struct
      ("$fp", FP), ("$v0", RV), ("$sp", SP), ("$ra", RA)]
 
   val tempMap = List.foldl (fn ((name, temp), map) => Temp.Map.insert (map, temp, name)) Temp.Map.empty regList
-  val registers = List.foldl (fn ((name, temp), registers) => name::registers) [] regList
+
+  val registers : register list = List.foldl (fn ((name, temp), registers) => name::registers) [] regList
+
+  val availableRegisters : register list =
+    List.map (fn (name) => case (Temp.Map.find (tempMap, name)) of
+                              NONE     => "$ERR"
+                            | SOME (r) => r)
+             (calleesaves @ callersaves @ argregs @ valregs)
 
   val wordSize = 4 
   val argRegisters = 4
@@ -109,29 +119,29 @@ struct
     (print ("FRAME <" ^ (Symbol.name name') ^ "> (" ^ Int.toString(!numLocals') ^ " locals, current offset = " ^ Int.toString(!currentOffset') ^ ")\n"))
 
   fun externalCall (s, args) =
-      (* =============================================== TODO: external call No-op noop NOP  =============================================== *)
-      (* Tree.CALL(Tree.NAME(Temp.namedlabel s), args) *)
-      Tree.NOP ()
+    (* =============================================== TODO: external call No-op noop NOP  =============================================== *)
+    (* Tree.CALL(Tree.NAME(Temp.namedlabel s), args) *)
+    Tree.NOP ()
 
-  fun procEntryExit1(frame', stm') = stm'
+  fun procEntryExit1(frame', stm') = 
+    stm'
 
-  (* TODO: add the sink back (see page 208) *)
   fun procEntryExit2(frame, body) =
-        body
-        (* body @
-        [A.OPER{assem="",
-        src =[ZERO,RA,SP]@calleesaves,
-        dst=[], jump=SOME[]}] *)
+    (* body *)
+    body @
+    [A.OPER{assem="",
+    src =[ZERO,RA,SP]@calleesaves,
+    dst=[], jump=SOME[]}]
 
   fun procEntryExit3({name, formals, numLocals, curOffset}, body) =
-        {prolog = "PROCEDURE " ^ Symbol.name name ^ "\n" ^ Symbol.name name ^ ": \n",
-         body = body,
-         epilog = "END " ^ Symbol.name name ^ "\n"}
+    {prolog = "# PROCEDURE " ^ Symbol.name name ^ "\n" ^ Symbol.name name ^ ": \n",
+      body = body,
+      epilog = "# END " ^ Symbol.name name ^ "\n\n"}
 
   fun exp (fraccess, frameaddr) = 
-      case fraccess of
-          InFrame offset => Tree.MEM(Tree.BINOP(Tree.PLUS, frameaddr, Tree.CONST offset))
-        | InReg temp => Tree.TEMP(temp)
+    (case fraccess of
+        InFrame offset => Tree.MEM(Tree.BINOP(Tree.PLUS, frameaddr, Tree.CONST offset))
+      | InReg temp => Tree.TEMP(temp))
 
   fun string (label, str) = str
   

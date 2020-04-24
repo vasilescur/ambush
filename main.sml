@@ -19,19 +19,34 @@ struct
             val {prolog, body, epilog} = F.procEntryExit3 (frame, instrs)
 
             (* Format those instructions using temp names *)
-            val format0 = Assem.format(Temp.makestring)
+            (* val formatFun = Assem.format(Temp.makestring) *)
 
-            val (instrs, allocation) = R.alloc (body, frame)
+            val (instrs, allocation) =
+              let val _ = ()
+              in  R.alloc (body, frame)
+              end
+              handle e => (raise e)
 
-        in  (TextIO.output (out, prolog); (app (fn i => TextIO.output(out, (format0 i) ^ "\n")) instrs); TextIO.output (out, epilog))
+            (* Instead of formatting with temp names, format with allocated reg names *)
+            val formatFun = 
+              let val _ = ()
+              in  Assem.format (fn (temp) => case (Temp.Map.find (allocation, temp)) of 
+                                                          NONE => "NotFound"
+                                                        | SOME (register) => register)
+              end
+              handle e => (raise e)
+
+        in  (TextIO.output (out, prolog); 
+            (app (fn i => TextIO.output(out, (formatFun i) ^ "\n")) instrs); 
+            TextIO.output (out, epilog))
         end
     | emitproc out (F.STRING(lab,s)) = TextIO.output(out, (F.string (lab,s)) ^ "\n")
 
    fun withOpenFile fname f = 
        let val out = TextIO.openOut fname
        in  ((*(f TextIO.stdOut);*) (f out before TextIO.closeOut out))
-       handle e => (TextIO.closeOut out; raise e)
-       end 
+       (* handle e => (TextIO.closeOut out; raise e) *)
+       end
 
    fun compile filename = 
        let val absyn = Parse.parse (filename ^ ".tig")
@@ -41,6 +56,6 @@ struct
            val frags = ((*FindEscape.prog absyn;*) S.transProg absyn)
        in  withOpenFile (filename ^ ".s") 
 	                      (fn out => (app (emitproc out) (List.rev frags)))
-       handle S.TypeCheckError => (print "Compilation failed due to type checking error")
+       (* handle S.TypeCheckError => (print "Compilation failed due to type checking error") *)
        end
 end

@@ -17,6 +17,10 @@ sig
   val tempMap: register Temp.Map.map
   val registers: register list
 
+  val specialregs : Temp.temp list
+
+  val availableRegisters: register list
+
   val argregs : Temp.temp list
   val callersaves : Temp.temp list 
   val calleesaves : Temp.temp list
