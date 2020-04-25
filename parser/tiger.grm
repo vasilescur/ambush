@@ -251,7 +251,7 @@ exp:
   |   exp GT exp          (A.OpExp({left=exp1, oper=A.GtOp, right=exp2, pos=exp1left}))
 
   (* Expression sequence *)
-  |   exp exp_tail        (A.SeqExp((exp, expleft)::exp_tail))
+  |  LPAREN exp exp_tail RPAREN       (A.SeqExp((exp, expleft)::exp_tail))
 
 
 (* Allow dealing with sequences of expressions, such as in the first body

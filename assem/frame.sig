@@ -17,6 +17,8 @@ sig
   val tempMap: register Temp.Map.map
   val registers: register list
 
+  val jumpStart: string
+
   val specialregs : Temp.temp list
 
   val availableRegisters: register list
