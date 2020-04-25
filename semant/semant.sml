@@ -6,26 +6,25 @@ struct
   structure S = Symbol
   structure T = Types
 
-  exception TypeCheckFailure of string (* An internal failure that should never be reached *)
-  exception TypeCheckError
 
   type exp = R.exp
 
   type frag = R.frag
+
+  exception TypeCheckFailure of string (* An internal failure that should never be reached *)
+  exception TypeCheckError of frag list
 
   type venv = E.enventry S.table
   type tenv = E.ty S.table
 
   type expty = {exp: R.exp, ty: T.ty}
 
-  val fail = ref false
-
-  fun reset () = (fail := false; R.reset ())
+  fun reset () = (ErrorMsg.reset(); R.reset ())
 
   (* Return value for cases where type checking failed *)
   val err_result = {exp = R.unfinished, ty = T.NIL}
 
-  val err = (fail := true; ErrorMsg.error)
+  fun err pos msg = (ErrorMsg.error pos ("Type Checking Error: " ^ msg))
 
   (* Shortcut function for type errors *)
   fun type_err (exp, act, pos) =
@@ -48,7 +47,6 @@ struct
     | type_str (T.NAME (sym, _)) = "name of " ^ S.name sym
     | type_str (T.ARRAY (ty, _)) = "array of " ^ type_str ty
     | type_str (T.RECORD (_, _)) = "record"
-    | type_str (T.BOTTOM) = "bottom"
 
   (* Gets the *actual* type from NAME or ARRAY *)
   fun actual_ty (ty, pos) = 
@@ -70,7 +68,7 @@ struct
 
   fun findType (typ, tenv) = let val optType = S.look (tenv, typ)
                              in case optType of 
-                                  NONE => T.BOTTOM
+                                  NONE => T.UNIT
                                 | SOME(found) => found
                              end
     
@@ -99,19 +97,19 @@ struct
                                               A.NameTy (symbol, pos) => check
                                             | A.RecordTy (fields) => false
                                             | A.ArrayTy (symbol, pos) => false
-            fun addName ({name, ty, pos}, tenv) = S.enter(tenv, name, T.BOTTOM)
+            fun addName ({name, ty, pos}, tenv) = S.enter(tenv, name, T.UNIT)
             fun transTypeDec ({name, ty, pos}, tenv) = case ty of
                                                     A.NameTy (symbol, pos)  => 
                                                       let val optType = S.look(tenv, symbol)
                                                       in case optType of
-                                                          NONE => (err pos "Unrecognized type"; S.enter(tenv, name, T.BOTTOM))
+                                                          NONE => (err pos "Unrecognized type"; S.enter(tenv, name, T.UNIT))
                                                         | SOME(oldType) => S.enter(tenv, name, oldType)
                                                       end
                                                   | A.RecordTy (fields)    =>
                                                       let fun transRecTy ({name, escape, typ, pos}, fieldTypes) = 
                                                           let val optType = S.look (tenv, typ)
                                                           in case optType of
-                                                            NONE => (name, T.BOTTOM)::fieldTypes
+                                                            NONE => (name, T.UNIT)::fieldTypes
                                                           | SOME(fieldType) => (name, fieldType)::fieldTypes
                                                           end
                                                       in S.enter(tenv, name, T.RECORD(List.foldl transRecTy [] fields, ref ()))
@@ -119,7 +117,7 @@ struct
                                                   | A.ArrayTy (symbol, pos) =>
                                                       let val optType = S.look(tenv, symbol)
                                                       in case optType of 
-                                                          NONE => (err pos "Unrecognized type"; S.enter (tenv, name, T.ARRAY(T.BOTTOM, ref ())))
+                                                          NONE => (err pos "Unrecognized type"; S.enter (tenv, name, T.ARRAY(T.UNIT, ref ())))
                                                         | SOME(arrayType) => S.enter(tenv, name, T.ARRAY (arrayType, ref ()))
                                                       end
             val {name, ty, pos} = List.nth (types, 0)
@@ -137,21 +135,21 @@ struct
                   let fun paramToFormal ({name, escape, typ, pos}, formals) = 
                             let val optType = S.look (tenv, typ)
                                 val formal = case optType of
-                                               NONE => T.BOTTOM
+                                               NONE => T.UNIT
                                              | SOME (formalType) => formalType
                             in formal::formals
                             end
                       val formals = List.foldl paramToFormal [] params
                       val newLabel = Temp.newlabel ()
                   in case result of 
-                      NONE => S.enter(venv, name, E.FunEntry {level=R.nextLevel (level, newLabel, paramsToEscapes (params, [])), label=newLabel, formals=formals, result=ref T.BOTTOM})
+                      NONE => S.enter(venv, name, E.FunEntry {level=R.nextLevel (level, newLabel, paramsToEscapes (params, [])), label=newLabel, formals=formals, result=ref T.UNIT})
                     | SOME (resultVal, resultPos) => 
                               let val resultTy = S.look (tenv, resultVal)
                               in case resultTy of
                                   NONE => 
                                         (err resultPos "Unrecognized type"; 
                                          S.enter (venv, name,
-                                                  E.FunEntry {level=R.nextLevel (level, newLabel, paramsToEscapes (params, [])), label=newLabel, formals=formals, result=ref T.BOTTOM}))
+                                                  E.FunEntry {level=R.nextLevel (level, newLabel, paramsToEscapes (params, [])), label=newLabel, formals=formals, result=ref T.UNIT}))
                                 | SOME(resultTyVal) => 
                                         S.enter(venv, name, 
                                                 E.FunEntry {level=R.nextLevel (level, newLabel, paramsToEscapes (params, [])), label=newLabel, formals=formals, result=ref resultTyVal})
@@ -162,7 +160,7 @@ struct
                   let fun paramToFormal ({name, escape, typ, pos}, formals) = 
                             let val optType = S.look (tenv, typ)
                                 val formal = case optType of
-                                               NONE => T.BOTTOM
+                                               NONE => T.UNIT
                                              | SOME (formalType) => formalType
                             in formal::formals
                             end
@@ -189,7 +187,7 @@ struct
             val funDecs = (List.foldl transFunDec {tenv=tenv, venv=newVenv} functions)
         in {exps= [], tenv=tenv, venv= #venv funDecs}
         end
-    
+
     and transExp(level, breakLabel, venv, tenv) = 
     let val env : env = {venv = venv, tenv = tenv}
         fun trexp (A.IntExp (int)) = {exp=(R.intIR int), ty=T.INT}
@@ -205,26 +203,36 @@ struct
                   fun translateArg (exp) = #exp (trexp exp)
                   val optFunc = S.look (venv, func)
               in case optFunc of 
-                                NONE => (err pos "Function undefined"; {exp=R.nilIR (), ty=T.BOTTOM})
+                                NONE => (err pos "Function undefined"; {exp=R.nilIR (), ty=T.UNIT})
                               | SOME (entry) => case entry of 
                                               E.FunEntry ({formals, result, level=funlevel, label}) => (checkArgs (formals, args); 
                                                                                                {exp=R.callIR (funlevel, level, label, map translateArg args), ty= (!result)})
-                                            | E.VarEntry ({ty, access}) => (err pos "Function undefined"; {exp=R.nilIR (), ty=T.BOTTOM})
+                                            | E.VarEntry ({ty, access}) => (err pos "Function undefined"; {exp=R.nilIR (), ty=T.UNIT})
               end
           | trexp (A.RecordExp ({fields, typ, pos})) = 
               let val (reqFields, recordType) = case (S.look (tenv, typ)) of
-                                    NONE => (err pos "Record undefined"; ([], T.BOTTOM))
+                                    NONE => (err pos "Record undefined"; ([], T.UNIT))
                                   | SOME (T.RECORD (reqFields, unique)) => (reqFields, T.RECORD (reqFields, unique))
-                                  | SOME (_) => (err pos "Record expression requires a record type"; ([], T.BOTTOM))
-                  fun checkFields ([], []) = ()
-                    | checkFields ([], reqFields) = (err pos "Not enough fields for record type")
-                    | checkFields (fields, []) = (err pos "Too many fields for record type")
-                    | checkFields ((sym, exp, pos)::fields, (reqSym, reqTy)::reqFields) = 
-                        let val checkSym = if (sym = reqSym)
-                                           then ()
-                                           else (err pos "Field names do not match (make sure record fields are in the same order)")
-                            val checkTyp = checkTypesEq (#ty (trexp exp), reqTy, pos, "Field types do not match")
-                        in checkFields (fields, reqFields)
+                                  | SOME (_) => (err pos "Record expression requires a record type"; ([], T.UNIT))
+                  fun checkFields (fields, reqFields) =
+                        let val match = ref true
+                            val errormsg = "Record does not match record type\n"
+                            val expected = foldl (fn ((sym, ty), table)=> S.enter (table, sym, ty)) S.empty reqFields
+                            val expectedStr = (foldl (fn ((sym, ty), str) => str ^ (S.name sym )^ " : " ^ (type_str ty) ^ ", ") "" reqFields)
+                            val actualStr = ref ""
+                            val checkMatch = foldl (fn ((sym, exp, pos), table) => 
+                                                        let val actualTy = #ty (trexp exp)
+                                                            val found = case S.look (table, sym) of
+                                                                          NONE => (match := false; false)
+                                                                        | SOME (typ) => (if Types.eq (typ, actualTy)
+                                                                                        then ()
+                                                                                        else match := false; true)
+                                                            val _ = actualStr := ((!actualStr) ^ (S.name sym) ^ " : " ^ (type_str actualTy) ^ ", ")
+                                                        in if found then S.remove (table, sym) else table
+                                                        end)
+                                            expected fields
+                        in if !match then () else err pos (errormsg ^ "    Expected: {" ^ (expectedStr) ^ "}\n"
+                                                                    ^ "    Actual:   {" ^ (!actualStr)  ^ "}\n")
                         end
                   fun getExps ([]) = []
                     | getExps ((sym, exp, pos)::fields) = (#exp (trexp exp))::(getExps fields)
@@ -297,7 +305,7 @@ struct
                 | SOME(T.ARRAY(ty, _)) => (checkTypesEq(ty, (#ty initExp), pos, "Initialized with incorrect type expected " 
                                                                                   ^ type_str (ty) ^ " got " ^ type_str (#ty (trexp init))); 
                                       {exp=R.arrayIR (#exp sizeExp, #exp initExp), ty=T.ARRAY(ty, ref ())})
-                | SOME(_) => (err pos "Not an array type"; {exp=R.nilIR (), ty=T.BOTTOM})
+                | SOME(_) => (err pos "Not an array type"; {exp=R.nilIR (), ty=T.UNIT})
               end
           | trexp (A.LetExp ({decs, body, pos})) =
               let fun transDecs (exps, venv, tenv, dec::decs) =
@@ -341,27 +349,22 @@ struct
     end
 
   fun transProg (absyn : Absyn.exp) =
-    let
-      val _ = ()
+    let val _ = ()
+        (* Create the tenv and venv *)
+        val venv : venv = E.base_venv
+        val tenv : tenv = E.base_tenv
+        val mainLabel = Temp.newlabel ()
 
-      val _ = reset ()
+        val mainLevel = R.nextLevel (R.outermost, mainLabel, [])
 
-      (* Create the tenv and venv *)
-      val venv : venv = E.base_venv
-      val tenv : tenv = E.base_tenv
-      val mainLabel = Temp.newlabel ()
+        (* Recurse through the abstract syntax tree *)
+        val ir = #exp ((transExp (mainLevel, mainLabel, venv, tenv)) absyn)
 
-      val mainLevel = R.nextLevel (R.outermost, mainLabel, [])
+        val _ = if (!ErrorMsg.anyErrors) then (raise TypeCheckError ([])) else ()
+        val result = R.result ()
+        val _ = reset ()
 
-      (* Recurse through the abstract syntax tree *)
-      val ir = #exp ((transExp (mainLevel, mainLabel, venv, tenv)) absyn)
-        handle e => raise e
-
-      val _ = if (!fail) then (raise TypeCheckError) else ()
-
-    in
-      R.procedureEntryExit (mainLevel, ir, mainLabel);
-      R.result ()
+    in R.procedureEntryExit (mainLevel, ir, mainLabel); result
     end
     handle e => raise e
 end

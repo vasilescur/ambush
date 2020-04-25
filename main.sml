@@ -7,12 +7,13 @@ struct
   structure R = RegAlloc (F)
 
   fun emitproc out (F.PROC{body,frame}) =
-        let val _ = print ("emit " ^ F.name frame ^ "\n")
+        let val _ = ()
+            (*val _ = print ("emit " ^ F.name frame ^ "\n")*)
             (* Linearize the statements of the body and trace schedule *)
             (* val _ = Printtree.printtree(out,body); *)
             val stms = Canon.linearize body
             val stms' = Canon.traceSchedule(Canon.basicBlocks stms)
-            val _ = app (fn s => Printtree.printtree(TextIO.stdOut,s)) stms';
+            (* val _ = app (fn s => Printtree.printtree(TextIO.stdOut,s)) stms'; *)
 
             (* Convert to list of instructions *)
             val instrs = F.procEntryExit2 (frame, List.concat (map (MIPSGen.codeGen frame) stms'))
@@ -24,13 +25,13 @@ struct
             val (instrs, allocation) = R.alloc (body, frame)
               handle e => raise e
             
-            (* Print the allocation table *)
+            (* (* Print the allocation table *)
             val _ = print ("\n\nAllocation Table: \n")
 
             val _ = map (fn (key, value) => (print ("    " ^ (value) ^ " <- " ^ (Temp.makestring key) ^ "\n")))
                 (Temp.Map.listItemsi allocation)
 
-            val _ = print("\n")
+            val _ = print("\n") *)
 
             (*Instead of formatting with temp names, format with allocated reg names *)
             val formatFun = 
@@ -56,14 +57,15 @@ struct
 
    fun compile filename = 
        let val absyn = Parse.parse (filename ^ ".tig")
-              handle e => raise e
-           val _ = print "\nAbstract Syntax Tree: \n";
-           val _ = PrintAbsyn.print (TextIO.stdOut, absyn)
+           (* val _ = print "\nAbstract Syntax Tree: \n";
+           val _ = PrintAbsyn.print (TextIO.stdOut, absyn) *)
            val _ = Temp.reset ()
+           val fail = ref false
            val frags = ((*FindEscape.prog absyn;*) S.transProg absyn)
-              handle e => raise e
-       in  withOpenFile (filename ^ ".s")
+                handle S.TypeCheckError (frags)=> (fail := true; frags)
+          
+       in  if (!fail) then ()
+           else withOpenFile (filename ^ ".s")
 	                      (fn out => (TextIO.output (out, F.jumpStart); (app (emitproc out) (List.rev frags))))
-       (* handle S.TypeCheckError => (print "Compilation failed due to type checking error") *)
        end
 end

@@ -43,17 +43,17 @@ struct
                                       Temp.Set.add (Temp.Set.add (set, gtemp move1), gtemp move2))
                           Temp.Set.empty moves
             fun addToWorklist (temp, (worklist, moves)) =
-                  let val _ = print "Retrieving temp from node...\n"
+                  let (* val _ = print "Retrieving temp from node...\n" *)
                       val node = tnode temp
-                      val _ = print "Determining temp type...\n"
+                      (* val _ = print "Determining temp type...\n" *)
                       val tempType = if (Liveness.LiveG.inDegree (node) > List.length F.registers)
                                      then W.HIGH
                                      else if Temp.Set.member (moveSet, temp)
                                           then W.MOVE
                                           else W.LOW
-                      val _ = print "Adding to worklist...\n"
-                  in  if (tempType = W.MOVE) then (print "Move type found!\n"; (W.add (worklist, tempType, temp), temp::moves))
-                                             else (print "Non-move type found!\n"; (W.add (worklist, tempType, temp), moves))
+                      (* val _ = print "Adding to worklist...\n" *)
+                  in  if (tempType = W.MOVE) then ((*print "Move type found!\n";*) (W.add (worklist, tempType, temp), temp::moves))
+                                             else ((*print "Non-move type found!\n";*) (W.add (worklist, tempType, temp), moves))
                   handle NotFound => raise NotFound
                   end
         in  Temp.Set.foldl addToWorklist (initWorklist, []) (W.init (initWorklist))

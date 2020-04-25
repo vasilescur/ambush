@@ -3,5 +3,5 @@ sig
   type exp
   type frag
   val transProg: Absyn.exp -> frag list (* Tree.stm *)
-  exception TypeCheckError
+  exception TypeCheckError of frag list
 end

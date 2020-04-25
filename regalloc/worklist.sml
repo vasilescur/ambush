@@ -51,7 +51,7 @@ struct
    *)
   fun add ({init, simplify, freeze, spill, spilled, coalesced, colored, select}, LOW, temp) = 
         let
-            val _ = print ("Trying to W.add " ^ Temp.makestring temp ^ "\n")
+            (* val _ = print ("Trying to W.add " ^ Temp.makestring temp ^ "\n") *)
             val init' = Temp.Set.delete (init, temp)
             val simplify' = Temp.Set.add (simplify, temp)
             val recordNew = {init=init, 
@@ -67,7 +67,7 @@ struct
     | add ({init, simplify, freeze, spill, spilled, coalesced, colored, select}, HIGH, temp) = raise SpillException
     | add ({init, simplify, freeze, spill, spilled, coalesced, colored, select}, MOVE, temp) = 
         let 
-            val _ = print ("Trying to W.add " ^ Temp.makestring temp ^ "\n")
+            (* val _ = print ("Trying to W.add " ^ Temp.makestring temp ^ "\n") *)
             val init' = Temp.Set.delete (init, temp)
             val simplify' = Temp.Set.add (simplify, temp)
             val recordNew = {init=init, 

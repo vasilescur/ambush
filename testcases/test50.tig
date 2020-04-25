@@ -1,0 +1,11 @@
+/* Correct use of recursive types, and assigning values to specific fields of a record. */
+let type rec = {str:string, rec:rec2}
+    type rec2 = {str:string, rec:rec}
+    var b := "string"
+    var c := "e"
+    var d := rec2 {str=c, rec=nil}
+    var a := rec {str=b, rec=d}
+in  (d.str := "worlds";
+    a.str := "apart";
+    a)
+end
