@@ -8,5 +8,5 @@ let
 	function add(a : int, b : int) : int =
 		a + b
 in
-	c := add(a, b)
+	c := add (a, b)
 end

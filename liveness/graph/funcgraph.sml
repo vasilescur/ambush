@@ -128,7 +128,7 @@ struct
                     prSet succs;
                     println(" -> Predecessors:");
                     prSet preds)
-                  else ())
+                    else ())
               in  ()
               end
       in  NodeMap.app prOneNode g

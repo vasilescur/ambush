@@ -199,4 +199,9 @@ struct
                     end) liveGraph false)
 
   fun printNodeForVis (nid, temp) = (* Int.toString nid ^ ": " ^ *) Temp.makestring temp
+
+  fun print (IGRAPH {graph, ...}) = 
+        let fun stringify (nid, temp) = Temp.makestring temp
+        in LiveG.printGraph stringify graph true
+        end
 end

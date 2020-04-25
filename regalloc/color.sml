@@ -30,7 +30,7 @@ struct
         let val Liveness.IGRAPH {graph, tnode, gtemp, moves} = interference
             val (worklist, moveNodes) = setupWorklist (interference, initial)
             val simplified = simplify (worklist, graph, gtemp)
-            val selectedWorklist = select (simplified, graph, gtemp)
+            val selectedWorklist = select (simplified, graph, gtemp, tnode)
             val colored : allocation = W.colored (selectedWorklist)
         in  (colored, moveNodes)
         end
@@ -40,9 +40,9 @@ struct
         let val temps = (Flow.G.foldNodes (fn (node, li) => Flow.G.nodeInfo (node)::li) [] graph)
             val initWorklist = W.create (temps, initialAlloc)
             val moveSet = foldl (fn ((move1, move2), set) =>
-                                      Temp.Set.add (Temp.Set.add (set, gtemp move1), gtemp move2)) 
+                                      Temp.Set.add (Temp.Set.add (set, gtemp move1), gtemp move2))
                           Temp.Set.empty moves
-            fun addToWorklist (temp, (worklist, moves)) = 
+            fun addToWorklist (temp, (worklist, moves)) =
                   let val _ = print "Retrieving temp from node...\n"
                       val node = tnode temp
                       val _ = print "Determining temp type...\n"
@@ -62,12 +62,12 @@ struct
 
   and simplify (worklist, graph, gtemp) = Temp.Set.foldl W.stack worklist (W.simplify (worklist))
 
-  and select (worklist, graph, gtemp) =
+  and select (worklist, graph, gtemp, tnode) =
         let val colorSet = RSet.addList (RSet.empty, registerNames)
-            fun selectColor (node, worklist) = 
-              let val temp = gtemp (node)
+            fun selectColor (temp, worklist) = 
+              let val node = tnode (temp)
                   fun removeColors (node, colors) = 
-                        let val temp = gtemp (node)
+                        let val temp = gtemp node
                             val colored = W.colored (worklist)
                             val color = Temp.Map.find (colored, temp)
                         in  case color of
@@ -83,7 +83,7 @@ struct
                                   else List.hd (RSet.listItems (availableColors))
               in  W.color (worklist, temp, tempColor)
               end
-        in  Liveness.LiveG.foldNodes selectColor worklist graph
+        in Temp.Set.foldl selectColor worklist (W.select (worklist))
         end
 
 end

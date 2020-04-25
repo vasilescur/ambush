@@ -52,7 +52,7 @@ struct
   fun add ({init, simplify, freeze, spill, spilled, coalesced, colored, select}, LOW, temp) = 
         let
             val _ = print ("Trying to W.add " ^ Temp.makestring temp ^ "\n")
-            (* val init' = Temp.Set.delete (init, temp) *)
+            val init' = Temp.Set.delete (init, temp)
             val simplify' = Temp.Set.add (simplify, temp)
             val recordNew = {init=init, 
                              simplify=simplify', 
@@ -68,7 +68,7 @@ struct
     | add ({init, simplify, freeze, spill, spilled, coalesced, colored, select}, MOVE, temp) = 
         let 
             val _ = print ("Trying to W.add " ^ Temp.makestring temp ^ "\n")
-            (* val init' = Temp.Set.delete (init, temp) *)
+            val init' = Temp.Set.delete (init, temp)
             val simplify' = Temp.Set.add (simplify, temp)
             val recordNew = {init=init, 
                              simplify=simplify', 
@@ -97,7 +97,9 @@ struct
 
   fun color ({init, simplify, freeze, spill, spilled, coalesced, colored, select},
              temp, color : color) =
-        let (* val select' = Temp.Set.delete (select, temp) *)
+        let val select' = if Temp.Set.member (select, temp)
+                          then Temp.Set.delete (select, temp)
+                          else (print "Temp not in select"; select)
             val colored' : color Temp.map = Temp.Map.insert (colored, temp, color)
             val recordNew = {init=init,
                              simplify=simplify,
@@ -113,6 +115,7 @@ struct
   (* Getter methods *)
   fun colored ({init, simplify, freeze, spill, spilled, coalesced, colored, select}) = colored
   fun init ({init, simplify, freeze, spill, spilled, coalesced, colored, select}) = init
+  fun select ({init, simplify, freeze, spill, spilled, coalesced, colored, select}) = select
   fun simplify ({init, simplify, freeze, spill, spilled, coalesced, colored, select}) = simplify
 
 end

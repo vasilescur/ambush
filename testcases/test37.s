@@ -1,49 +1,51 @@
+.text
 # PROCEDURE L1
 L1: 
 L3:
-add $a0, $a0, $a0
-j L2
+    add $a0, $v0, $a0
+    j L2
 L2:
-
+    
 # END L1
 
+.text
 # PROCEDURE L0
 L0: 
 L5:
-addi $a0, r0, 7
-sw $a0, -4($a3)
-addi $a0, r0, 9
-sw $a0, -8($a3)
-addi $a1, r0, 3
-sw $a1, -12($a3)
-addi $fp, $a3, -12
-move $a2, $fp
-move $a0, $a0
-move $a1, $a1
-move $fp, $fp
-move $a0, $a0
-move $a1, $a1
-move $fp, $fp
-move $t0, $a0
-move $s0, $a1
-move $a0, $a3
-lw $s1, -4($a3)
-move $a0, $s1
-lw $a2, -8($a3)
-move $a2, $a2
-jal L1
-move $a1, $s0
-move $a0, $t0
-move $fp, $fp
-move $a1, $a1
-move $a0, $a0
-move $fp, $fp
-move $a1, $a1
-move $a0, $a0
-move $a0, $a3
-sw $a0, 0($a2)
-j L4
+    addi $a3, $0, 7
+    sw $a3, -4($fp)
+    addi $t0, $0, 9
+    sw $t0, -8($fp)
+    addi $t1, $0, 3
+    sw $t1, -12($fp)
+    addi $t2, $fp, -12
+    move $a2, $t2
+    sw $t0, -16($fp)
+    sw $t1, -20($fp)
+    sw $t2, -24($fp)
+    sw $t3, -28($fp)
+    sw $t4, -32($fp)
+    sw $t5, -36($fp)
+    sw $t6, -40($fp)
+    sw $t7, -44($fp)
+    move $a0, $fp
+    lw $t3, -4($fp)
+    move $a1, $t3
+    lw $t4, -8($fp)
+    move $a2, $t4
+    jal L1
+    lw $t7, -44($fp)
+    lw $t6, -40($fp)
+    lw $t5, -36($fp)
+    lw $t4, -32($fp)
+    lw $t3, -28($fp)
+    lw $t2, -24($fp)
+    lw $t1, -20($fp)
+    lw $t0, -16($fp)
+    move $a1, $v0
+    sw $a1, 0($a2)
+    j L4
 L4:
-
+    
 # END L0
 

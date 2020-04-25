@@ -21,11 +21,16 @@ struct
             (* Format those instructions using temp names *)
             (* val formatFun = Assem.format(Temp.makestring) *)
 
-            val (instrs, allocation) =
-              let val _ = ()
-              in  R.alloc (body, frame)
-              end
-              handle e => (raise e)
+            val (instrs, allocation) = R.alloc (body, frame)
+              handle e => raise e
+            
+            (* Print the allocation table *)
+            val _ = print ("\n\nAllocation Table: \n")
+
+            val _ = map (fn (key, value) => (print ("    " ^ (value) ^ " <- " ^ (Temp.makestring key) ^ "\n")))
+                (Temp.Map.listItemsi allocation)
+
+            val _ = print("\n")
 
             (* Instead of formatting with temp names, format with allocated reg names *)
             val formatFun = 
@@ -37,7 +42,10 @@ struct
               handle e => (raise e)
 
         in  (TextIO.output (out, prolog); 
-            (app (fn i => TextIO.output(out, (formatFun i) ^ "\n")) instrs); 
+            (* TextIO.output (out, ".text\n"); *)
+            (app (fn i => let val instruction = (formatFun i)
+                          in  TextIO.output(out, instruction ^ "\n")
+                          end) instrs); 
             TextIO.output (out, epilog))
         end
     | emitproc out (F.STRING(lab,s)) = TextIO.output(out, (F.string (lab,s)) ^ "\n")
@@ -50,10 +58,12 @@ struct
 
    fun compile filename = 
        let val absyn = Parse.parse (filename ^ ".tig")
+              handle e => raise e
            val _ = print "\nAbstract Syntax Tree: \n";
            val _ = PrintAbsyn.print (TextIO.stdOut, absyn)
            val _ = Temp.reset ()
            val frags = ((*FindEscape.prog absyn;*) S.transProg absyn)
+              handle e => raise e
        in  withOpenFile (filename ^ ".s") 
 	                      (fn out => (app (emitproc out) (List.rev frags)))
        (* handle S.TypeCheckError => (print "Compilation failed due to type checking error") *)

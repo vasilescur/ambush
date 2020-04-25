@@ -20,7 +20,7 @@ struct
               in  gen t; 
                   t 
               end
-              
+
             fun munchStm(T.SEQ(a,b)) = (munchStm a; munchStm b)
             
               (* Label *)
@@ -195,7 +195,8 @@ struct
 
               (* Calls *)
 
-              | munchStm (T.EXP (T.CALL (T.NAME l, args))) =
+              (* "The one below it would literally do it" -- Jake Derry *)
+              (* | munchStm (T.EXP (T.CALL (T.NAME l, args))) =
                 let val p = map (fn r => (Temp.newtemp (), r)) Frame.callersaves
                     val sources = map #1 p
 
@@ -209,7 +210,7 @@ struct
                                 jump=SOME([l])});
                     map (fn (a, r) => munchStm(load a r)) (List.rev p);
                     ()
-                end 
+                end  *)
 
               | munchStm (T.EXP e) = (munchExp e; ())
 
@@ -248,7 +249,7 @@ struct
 
                 (* Constants *)
                 | munchExp(T.CONST i) =
-                    result(fn r => emit(A.OPER{assem="addi `d0, r0, " ^ intToString i,
+                    result(fn r => emit(A.OPER{assem="addi `d0, $0, " ^ intToString i,
                                                src=[], dst=[r], jump=NONE}))
 
                 (* Add and subtracts *)
@@ -391,18 +392,30 @@ struct
 
                 (* Calls *)
                 | munchExp (T.CALL (T.NAME l, args)) =
-                let val p = map (fn r => (Temp.newtemp (), r)) Frame.callersaves
-                    val sources = map #1 p
+                let 
+                    val _ = ()
+                    (* Allocate a local var in the frame for each caller-saved reg/temp *)
+                    (* Accesses maps temps -> accesses *)
+                    val accesses : Frame.access Temp.map = 
+                      foldl (fn (r, map) => Temp.Map.insert (map, r, Frame.allocateLocal frame true)) 
+                            Temp.Map.empty 
+                            Frame.callersaves
 
-                    fun load a r = T.MOVE (T.TEMP r, T.TEMP a)
-                    fun store a r = T.MOVE (T.TEMP a, T.TEMP r)
-                in  map (fn (a, r) => munchStm(store a r)) p;
+                    (* Returns the "backup" memory location of a caller-saved register specified by access *)
+                    fun mem (r) = let val access = valOf (Temp.Map.find (accesses, r))
+                                  in Frame.exp (access, T.TEMP Frame.FP)
+                                  end
+
+                    (* Create statements that store or load the specified register to/from local variables in the frame *)
+                    fun store (r : Temp.temp) = T.MOVE (mem r, T.TEMP r)
+                    fun load (r : Temp.temp) = T.MOVE (T.TEMP r, mem r)
+                in  map (fn (r) => munchStm(store r)) Frame.callersaves;
                     munchArgs (0, args);
                     emit(A.OPER{assem="jal `j0",
                                 src=[],
                                 dst=[],
                                 jump=SOME([l])});
-                    map (fn (a, r) => munchStm(load a r)) (List.rev p);
+                    map (fn (r) => munchStm(load r)) (List.rev Frame.callersaves);
                     Frame.RV
                 end 
 

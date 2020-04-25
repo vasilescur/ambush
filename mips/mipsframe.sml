@@ -23,7 +23,6 @@ struct
   type register = string
 
   (* Register Lists *)
-
   val ZERO = Temp.newtemp ()
 
   (* Results and evaluation *)
@@ -48,10 +47,9 @@ struct
   val t5 = Temp.newtemp ()
   val t6 = Temp.newtemp ()
   val t7 = Temp.newtemp ()
-
   val t8 = Temp.newtemp ()
   val t9 = Temp.newtemp ()
-  val callersaves = [t0, t1, t2, t3, t4, t5, t6, t7]
+  val callersaves = [t0, t1, t2, t3, t4, t5, t6, t7, t8, t9]
 
   (* Saved (callee-saved) *)
   val s0 = Temp.newtemp ()
@@ -80,6 +78,7 @@ struct
     
      ("$t0", t0), ("$t1", t1), ("$t2", t2), ("$t3", t3), 
      ("$t4", t4), ("$t5", t5), ("$t6", t6), ("$t7", t7), 
+     ("$t8", t8), ("$t9", t9),
      
      ("$s0", s0), ("$s1", s1), ("$s2", s2), ("$s3", s3), 
      ("$s4", s4), ("$s5", s5), ("$s6", s6), ("$s7", s7), 
@@ -130,20 +129,23 @@ struct
     (* body *)
     body @
     [A.OPER{assem="",
-    src =[ZERO,RA,SP]@calleesaves,
+    src =[ZERO,RA,SP] @ calleesaves,   
     dst=[], jump=SOME[]}]
 
   fun procEntryExit3({name, formals, numLocals, curOffset}, body) =
-    {prolog = "# PROCEDURE " ^ Symbol.name name ^ "\n" ^ Symbol.name name ^ ": \n",
+    {prolog = ".text\n# PROCEDURE " ^ Symbol.name name ^ "\n" ^ Symbol.name name ^ ": \n",
       body = body,
       epilog = "# END " ^ Symbol.name name ^ "\n\n"}
 
-  fun exp (fraccess, frameaddr) = 
-    (case fraccess of
-        InFrame offset => Tree.MEM(Tree.BINOP(Tree.PLUS, frameaddr, Tree.CONST offset))
-      | InReg temp => Tree.TEMP(temp))
+  
+  fun string (label, str) = 
+    (".data\n" ^ Symbol.name label ^ ": .asciiz \"" ^ str ^ "\"\n")
 
-  fun string (label, str) = str
+  fun exp (fraccess, frameaddr) =  (* frameaddr is the frame pointer as a tree expression *)
+    case fraccess of
+        InFrame offset => Tree.MEM(Tree.BINOP(Tree.PLUS, frameaddr, Tree.CONST offset))
+      | InReg temp => Tree.TEMP (temp)
+
   
   fun nextFrame {name, formals} = 
         let fun allocateFormals(offset, [], allocList, numRegs) = allocList
