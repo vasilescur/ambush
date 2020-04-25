@@ -137,7 +137,7 @@ struct
                                 val formal = case optType of
                                                NONE => T.UNIT
                                              | SOME (formalType) => formalType
-                            in formal::formals
+                            in formals@[formal]
                             end
                       val formals = List.foldl paramToFormal [] params
                       val newLabel = Temp.newlabel ()
@@ -169,7 +169,7 @@ struct
                                 val newVenv = S.enter (venv, name, E.VarEntry {ty=paramType, access=R.allocateLocal level (!escape)})
                             in {tenv=tenv, venv=newVenv}
                             end
-                      val formals = List.foldl paramToFormal [] params
+                      val formals = (List.foldl paramToFormal [] params)
                       val newVenv = #venv (List.foldl addParam {tenv=tenv, venv=venv} params)
                       val bodyExpty = transExp (level, breakLabel, newVenv, tenv) body
                       val newVenv = case S.look (venv, name) of 
@@ -194,20 +194,33 @@ struct
           | trexp (A.StringExp (string, pos)) = {exp=(R.stringIR (string)), ty=T.STRING}
           | trexp (A.NilExp) = {exp=(R.nilIR ()), ty=T.NIL}
           | trexp (A.CallExp ({func, args, pos})) = 
-              let fun checkArgs ([], []) = ()
-                    | checkArgs (formals, []) = err pos "Function takes more arguments than expected"
-                    | checkArgs ([], args) = err pos "Too many arguments for function signature"
-                    | checkArgs (formal::formals, arg::args) =
-                          (checkTypesEq (formal, #ty (trexp arg), pos, "Argument does not match function signature"); checkArgs (formals, args))
+              let val exptyArgs = map trexp args
+                  fun checkArgs ([], []) = true
+                    | checkArgs (formals, []) = false
+                    | checkArgs ([], args) = false
+                    | checkArgs (formal::formals, {ty=ty, exp=exp}::args) =
+                        let val match = Types.eq (formal, ty)
+                        in checkArgs (formals, args) andalso match
+                        end
 
-                  fun translateArg (exp) = #exp (trexp exp)
                   val optFunc = S.look (venv, func)
               in case optFunc of 
-                                NONE => (err pos "Function undefined"; {exp=R.nilIR (), ty=T.UNIT})
+                                NONE => (err pos "Function undefined"; {exp=R.nilIR (), ty=T.NIL})
                               | SOME (entry) => case entry of 
-                                              E.FunEntry ({formals, result, level=funlevel, label}) => (checkArgs (formals, args); 
-                                                                                               {exp=R.callIR (funlevel, level, label, map translateArg args), ty= (!result)})
-                                            | E.VarEntry ({ty, access}) => (err pos "Function undefined"; {exp=R.nilIR (), ty=T.UNIT})
+                                              E.FunEntry ({formals, result, level=funlevel, label}) => 
+                                                  let val _ = ()
+                                                      val errMsg = "Function signature does not match\n"
+                                                            ^ "    Operator: " ^ "( " ^ List.foldl (fn ({ty, exp}, str) => str ^ (type_str ty) ^ " * ") 
+                                                                              "" exptyArgs
+                                                                     ^ " )" ^ " -> " ^ (type_str (!result)) ^ "\n"
+                                                            ^ "    Operand:  " ^ "( " ^ List.foldl (fn (formal, str) => str ^ (type_str formal)^ " * ") 
+                                                                              "" formals
+                                                                     ^ " )" ^ " -> " ^ (type_str (!result)) ^ "\n"
+                                                            ^ "    Function: " ^ S.name func
+                                                      val _ = if checkArgs (formals, exptyArgs) then () else err pos (errMsg)
+                                                  in {exp=R.callIR (funlevel, level, label, map #exp exptyArgs), ty= (!result)}
+                                                  end
+                                            | E.VarEntry ({ty, access}) => (err pos "Function undefined"; {exp=R.nilIR (), ty=T.NIL})
               end
           | trexp (A.RecordExp ({fields, typ, pos})) = 
               let val (reqFields, recordType) = case (S.look (tenv, typ)) of
