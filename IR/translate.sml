@@ -93,7 +93,7 @@ struct
                   if   uniquedec = uniqueuse
                   then guess
                   else followSLs declevel useparent (Tree.MEM guess)
-    
+
 
   fun simpleVarIR ((declarationLevel, frameAccess), useLevel) =
     Ex (F.exp (frameAccess, followSLs declarationLevel useLevel (Tree.TEMP F.FP)))

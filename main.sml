@@ -11,8 +11,8 @@ struct
             (* Linearize the statements of the body and trace schedule *)
             (* val _ = Printtree.printtree(out,body); *)
             val stms = Canon.linearize body
-            val _ = app (fn s => Printtree.printtree(TextIO.stdOut,s)) stms;
             val stms' = Canon.traceSchedule(Canon.basicBlocks stms)
+            val _ = app (fn s => Printtree.printtree(TextIO.stdOut,s)) stms';
 
             (* Convert to list of instructions *)
             val instrs = F.procEntryExit2 (frame, List.concat (map (MIPSGen.codeGen frame) stms'))
@@ -32,14 +32,12 @@ struct
 
             val _ = print("\n")
 
-            (* Instead of formatting with temp names, format with allocated reg names *)
+            (*Instead of formatting with temp names, format with allocated reg names *)
             val formatFun = 
-              let val _ = ()
-              in  Assem.format (fn (temp) => case (Temp.Map.find (allocation, temp)) of 
+              Assem.format (fn (temp) => case (Temp.Map.find (allocation, temp)) of 
                                                           NONE => "NotFound"
-                                                        | SOME (register) => register)
-              end
-              handle e => (raise e)
+                                                        | SOME (register) => register)  
+                handle e => (raise e)
 
         in  (TextIO.output (out, prolog); 
             (* TextIO.output (out, ".text\n"); *)
@@ -64,8 +62,8 @@ struct
            val _ = Temp.reset ()
            val frags = ((*FindEscape.prog absyn;*) S.transProg absyn)
               handle e => raise e
-       in  withOpenFile (filename ^ ".s") 
-	                      (fn out => (app (emitproc out) (List.rev frags)))
+       in  withOpenFile (filename ^ ".s")
+	                      (fn out => (TextIO.output (out, F.jumpStart); (app (emitproc out) (List.rev frags))))
        (* handle S.TypeCheckError => (print "Compilation failed due to type checking error") *)
        end
 end

@@ -17,8 +17,8 @@ struct
   fun alloc (instrs, frame) = 
     let val (flow, nodelist) = MakeGraph.instrs2graph (instrs)
         val interference = Liveness.interferenceGraph (flow)
-        val _ = print "Printing interference graph..."
-        val _ = Liveness.print (interference)
+        (* val _ = print "Printing interference graph..."
+        val _ = Liveness.print (interference) *)
         val (allocation, spills) = C.color ({interference=interference,
                                              initial=F.tempMap,
                                              spillCost=(fn (_) => 1),

@@ -70,6 +70,7 @@ struct
   val GP = Temp.newtemp ()
   val specialregs = [RV, FP, SP, RA]
 
+  val jumpStart = ".text\n    j    L0\n"
 
   (* Categories of registers *)
 

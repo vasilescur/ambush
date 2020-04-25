@@ -281,50 +281,11 @@ signifies that those temps are live at the same time.
 Here is an example of a Liveness Analysis on the following Tiger program:
 
 ```sml
-let var a := 7
-    var b := 9
-    var c := 3
-    
-    function add(a : int, b : int) : int =
-      a + b
-
-in  c := add(a, b)
+let var a := 0
+in  while(a < 10) do a := a + 1; nil
 end
 ```
 
-This produces the code:
-
-```
-PROCEDURE L1
-L1: 
-L3:
-add t3, t1, t2
-j L2
-L2:
-END L1
-PROCEDURE L0
-L0: 
-L5:
-addi t6, r0, 7
-sw t6, ~4(t25)
-addi t7, r0, 9
-sw t7, ~8(t25)
-addi t8, r0, 3
-sw t8, ~12(t25)
-addi t9, t25, ~12
-move t5, t9
-move t3, t25
-lw t10, ~4(t25)
-move t4, t10
-lw t11, ~8(t25)
-move t5, t11
-jal L1
-move t4, t26
-sw t4, 0(t5)
-j L4
-L4:
-END L0
-```
 
 Control-flow Graph:
 
@@ -364,8 +325,61 @@ Which then generates the interference graph:
 
 ## Register Allocation
 
+The Register Allocation phase of the compiler applies a graph-coloring algorithm to the
+interference graph in order to "color" (assign) temps to certain physical registers. The idea
+is that multiple temps can be assigned to the same physical register, so long as they do not
+interfere with one another (share an edge in the interference graph AKA are live at the same
+time). 
+
+In addition, we had to keep track of pre-allocated registers such as special machine registers
+like the frame pointer, return address, and so on.
+
+We have not implemented spilling or coalescing, meaning that for now, we can only handle
+compiling Tiger programs that use a limited number of temps-- if they try to use too many
+temps, we won't have room in the physical registers and are not yet able to spill to memory. 
+
+One other improvement that we made during this stage is that instead of creating a series of
+`MOVE`s to save and restore the caller-saved registers before and after a function call,
+the compiler now saves those registers' values to local variables allocated within the
+current frame, which saves a lot of register space and helps raise the limit to spilling. 
+
+Here is an example of the register allocater at work. The following Tiger program:
+
+```sml
+let var a := 0
+in  while(a < 10) do a := a + 1; nil
+end
 ```
-//TODO
+
+Compiles to the following MIPS assembly with correct physical registers allocated:
+
+```mips
+.text
+    j    L0
+.text
+# PROCEDURE L0
+L0: 
+L5:
+    addi $t1, $0, 0
+    sw   $t1, -4($fp)
+L2:
+    addi $v0, $0, 1
+    lw   $a0, -4($fp)
+    addi $a1, $0, 10
+    slt  $a0, $a0, $a1
+    beq  $v0, $a0, L3
+    b    L1
+L1:
+    j    L4
+L3:
+    lw   $t0, -4($fp)
+    addi $a3, $t0, 1
+    addi $a2, $a3, 0
+    sw   $a2, -4($fp)
+    j    L2
+L4:
+    
+# END L0
 ```
 
 
