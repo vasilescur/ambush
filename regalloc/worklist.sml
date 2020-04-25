@@ -1,8 +1,7 @@
-structure Worklist =
+functor Worklist (F : FRAME) =
 struct
-  structure TempSet = Temp.Set
-  structure TempMap = Temp.Map
-  type color = int
+
+  type color = F.register
 
   datatype add = LOW | HIGH | MOVE
 
@@ -17,25 +16,29 @@ struct
                    colored: color Temp.map,
                    select: Temp.set}
 
-  val empty = {init=TempSet.empty,
-               simplify=TempSet.empty,
-               freeze=TempSet.empty,
-               spill=TempSet.empty,
-               spilled=TempSet.empty,
-               coalesced=TempSet.empty,
-               colored=TempMap.empty,
-               select=TempSet.empty}
+  val empty = {init=Temp.Set.empty,
+               simplify=Temp.Set.empty,
+               freeze=Temp.Set.empty,
+               spill=Temp.Set.empty,
+               spilled=Temp.Set.empty,
+               coalesced=Temp.Set.empty,
+               colored=Temp.Map.empty,
+               select=Temp.Set.empty}
 
-  fun init (inits) =
+  fun create (inits : Temp.temp list, initialColoring : color Temp.map) =
         let val {init, simplify, freeze, spill, spilled, coalesced, colored, select} = empty
-            val init' = List.foldl TempSet.add' init inits
+            val init' = List.foldl Temp.Set.add' init inits
+            fun removePrecolored (temp, reg, set) = if   Temp.Set.member (set, temp)
+                                                    then Temp.Set.delete (set, temp)
+                                                    else set
+            val init' = Temp.Map.foldli removePrecolored init' initialColoring
             val recordNew = {init=init', 
                              simplify=simplify, 
                              freeze=freeze, 
                              spill=spill, 
                              spilled=spilled, 
                              coalesced=coalesced, 
-                             colored=colored, 
+                             colored=initialColoring, 
                              select=select}
         in recordNew
         end
@@ -47,9 +50,11 @@ struct
    * temp results in an exception.
    *)
   fun add ({init, simplify, freeze, spill, spilled, coalesced, colored, select}, LOW, temp) = 
-        let val init' = TempSet.delete (init, temp)
-            val simplify' = TempSet.add (simplify, temp)
-            val recordNew = {init=init', 
+        let
+            val _ = print ("Trying to W.add " ^ Temp.makestring temp ^ "\n")
+            val init' = Temp.Set.delete (init, temp)
+            val simplify' = Temp.Set.add (simplify, temp)
+            val recordNew = {init=init, 
                              simplify=simplify', 
                              freeze=freeze, 
                              spill=spill, 
@@ -61,9 +66,11 @@ struct
         end
     | add ({init, simplify, freeze, spill, spilled, coalesced, colored, select}, HIGH, temp) = raise SpillException
     | add ({init, simplify, freeze, spill, spilled, coalesced, colored, select}, MOVE, temp) = 
-        let val init' = TempSet.delete (init, temp)
-            val simplify' = TempSet.add (simplify, temp)
-            val recordNew = {init=init', 
+        let 
+            val _ = print ("Trying to W.add " ^ Temp.makestring temp ^ "\n")
+            val init' = Temp.Set.delete (init, temp)
+            val simplify' = Temp.Set.add (simplify, temp)
+            val recordNew = {init=init, 
                              simplify=simplify', 
                              freeze=freeze, 
                              spill=spill, 
@@ -74,11 +81,11 @@ struct
         in recordNew
         end
 
-  fun stack ({init, simplify, freeze, spill, spilled, coalesced, colored, select}, temp) =
-        let val simplify' = TempSet.delete (simplify, temp)
-            val select' = TempSet.add (select, temp)
+  fun stack (temp, {init, simplify, freeze, spill, spilled, coalesced, colored, select}) =
+        let (*val simplify' = Temp.Set.delete (simplify, temp)*)
+            val select' = Temp.Set.add (select, temp)
             val recordNew = {init=init, 
-                             simplify=simplify', 
+                             simplify=simplify, 
                              freeze=freeze, 
                              spill=spill, 
                              spilled=spilled, 
@@ -89,21 +96,26 @@ struct
         end
 
   fun color ({init, simplify, freeze, spill, spilled, coalesced, colored, select},
-             temp, color) =
-        let val select' = TempSet.delete (select, temp)
-            val colored' = TempMap.insert (colored, temp, color)
+             temp, color : color) =
+        let val select' = if Temp.Set.member (select, temp)
+                          then Temp.Set.delete (select, temp)
+                          else (print "Temp not in select"; select)
+            val colored' : color Temp.map = Temp.Map.insert (colored, temp, color)
             val recordNew = {init=init,
                              simplify=simplify,
-                             freeze=freeze, 
-                             spill=spill, 
-                             spilled=spilled, 
-                             coalesced=coalesced, 
-                             colored=colored', 
-                             select=select'}
+                             freeze=freeze,
+                             spill=spill,
+                             spilled=spilled,
+                             coalesced=coalesced,
+                             colored=colored',
+                             select=select}
         in recordNew
         end
 
   (* Getter methods *)
   fun colored ({init, simplify, freeze, spill, spilled, coalesced, colored, select}) = colored
+  fun init ({init, simplify, freeze, spill, spilled, coalesced, colored, select}) = init
+  fun select ({init, simplify, freeze, spill, spilled, coalesced, colored, select}) = select
+  fun simplify ({init, simplify, freeze, spill, spilled, coalesced, colored, select}) = simplify
 
 end

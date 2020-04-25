@@ -36,6 +36,7 @@ fun printtree (outstream, s0) =
     | exp(T.CALL(e,el),d) = (indent d; sayln "CALL("; exp(e,d+1);
 			   app (fn a => (sayln ","; exp(a,d+2))) el;
 			   say ")")
+    | exp(T.NOP (), d) = (indent d; say "NOP ")
 
   and binop T.PLUS = say "PLUS"
     | binop T.MINUS = say "MINUS"
@@ -59,8 +60,7 @@ fun printtree (outstream, s0) =
     | relop T.UGT = say "UGT"
     | relop T.UGE = say "UGE"
 
- in  stm(s0,0); sayln ""; TextIO.flushOut outstream
+ in stm(s0,0); sayln ""; TextIO.flushOut outstream
 end
 
 end
-

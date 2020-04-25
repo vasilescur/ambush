@@ -7,6 +7,11 @@ struct
 
   exception ArgsSpill of string
 
+  fun intToString i =
+    if   i < 0 
+    then "-" ^ Int.toString (~i) 
+    else Int.toString i
+
   fun codeGen (frame) (stm: Tree.stm) : A.instr list =
         let val ilist = ref (nil: A.instr list)
             fun emit x = ilist := x :: !ilist
@@ -15,7 +20,7 @@ struct
               in  gen t; 
                   t 
               end
-              
+
             fun munchStm(T.SEQ(a,b)) = (munchStm a; munchStm b)
             
               (* Label *)
@@ -28,22 +33,22 @@ struct
   
               (* (e1 + i) <-- e2 *)
               | munchStm(T.MOVE(T.MEM(T.BINOP(T.PLUS,e1,T.CONST i)),e2)) =
-                  emit(A.OPER{assem="sw `s0, " ^ Int.toString i ^ "(`s1)",
+                  emit(A.OPER{assem="sw `s0, " ^ intToString i ^ "(`s1)",
                   src=[munchExp e2, munchExp e1],
                   dst=[],jump=NONE})
               | munchStm(T.MOVE(T.MEM(T.BINOP(T.PLUS,T.CONST i,e1)),e2)) =
-                  emit(A.OPER{assem="sw `s0, " ^ Int.toString i ^ "(`s1)",
+                  emit(A.OPER{assem="sw `s0, " ^ intToString i ^ "(`s1)",
                   src=[munchExp e2, munchExp e1],
                   dst=[],jump=NONE})
 
               (* (e1 - i) <-- e2 *)
 
               | munchStm (T.MOVE(T.MEM(T.BINOP(T.MINUS, e1, T.CONST i)), e2)) =
-                  emit(A.OPER{assem="sw `s0, " ^ Int.toString (~i) ^ "(`s1)",
+                  emit(A.OPER{assem="sw `s0, -" ^ intToString (i) ^ "(`s1)",
                   src=[munchExp e2, munchExp e1],
                   dst=[],jump=NONE})
               | munchStm (T.MOVE(T.MEM(T.BINOP(T.MINUS, T.CONST i, e1)), e2)) =
-                  emit(A.OPER{assem="sw `s0, " ^ Int.toString (~i) ^ "(`s1)",
+                  emit(A.OPER{assem="sw `s0, -" ^ intToString (i) ^ "(`s1)",
                   src=[munchExp e2, munchExp e1],
                   dst=[],jump=NONE})
 
@@ -60,7 +65,7 @@ struct
                   src=[munchExp e1, munchExp e2],
                   dst=[],jump=NONE}) *)
               (* | munchStm(T.MOVE(T.MEM(T.CONST i),e2)) =
-                  emit(A.OPER{assem="sw s0, " ^ Int.toString i ^ "<- s0",
+                  emit(A.OPER{assem="sw s0, " ^ intToString i ^ "<- s0",
                   src=[munchExp e2], dst=[],jump=NONE}) *)
 
 
@@ -68,27 +73,27 @@ struct
               (* Memory loads *)
 
               | munchStm (T.MOVE((T.TEMP i, T.CONST n))) =
-                emit(A.OPER{assem="li `d0, " ^ Int.toString n,
+                emit(A.OPER{assem="li `d0, " ^ intToString n,
                             src=[],dst=[i],jump=NONE})
 
               | munchStm (T.MOVE(T.TEMP i,
                                 T.MEM(T.BINOP(T.PLUS, e1, T.CONST n)))) =
-                emit(A.OPER{assem="lw `d0, " ^ Int.toString n ^ "(`s0)",
+                emit(A.OPER{assem="lw `d0, " ^ intToString n ^ "(`s0)",
                             src=[munchExp e1],dst=[i],jump=NONE})
 
               | munchStm (T.MOVE(T.TEMP i,
                                 T.MEM(T.BINOP(T.PLUS, T.CONST n, e1)))) =
-                emit(A.OPER{assem="lw `d0, " ^ Int.toString n ^ "(`s0)",
+                emit(A.OPER{assem="lw `d0, " ^ intToString n ^ "(`s0)",
                             src=[munchExp e1],dst=[i],jump=NONE})
 
               | munchStm (T.MOVE(T.TEMP i,
                                 T.MEM(T.BINOP(T.MINUS, e1, T.CONST n)))) =
-                emit(A.OPER{assem="lw `d0, " ^ Int.toString (n) ^ "(`s0)",
+                emit(A.OPER{assem="lw `d0, " ^ intToString (n) ^ "(`s0)",
                             src=[munchExp e1],dst=[i],jump=NONE})
 
               | munchStm (T.MOVE(T.TEMP i,
                                 T.MEM(T.BINOP(T.MINUS, T.CONST n, e1)))) =
-                emit(A.OPER{assem="lw `d0, " ^ Int.toString (n) ^ "(`s0)",
+                emit(A.OPER{assem="lw `d0, " ^ intToString (n) ^ "(`s0)",
                             src=[munchExp e1],dst=[i],jump=NONE})
 
 
@@ -190,7 +195,8 @@ struct
 
               (* Calls *)
 
-              | munchStm (T.EXP (T.CALL (T.NAME l, args))) =
+              (* "The one below it would literally do it" -- Jake Derry *)
+              (* | munchStm (T.EXP (T.CALL (T.NAME l, args))) =
                 let val p = map (fn r => (Temp.newtemp (), r)) Frame.callersaves
                     val sources = map #1 p
 
@@ -204,7 +210,7 @@ struct
                                 jump=SOME([l])});
                     map (fn (a, r) => munchStm(load a r)) (List.rev p);
                     ()
-                end 
+                end  *)
 
               | munchStm (T.EXP e) = (munchExp e; ())
 
@@ -216,42 +222,42 @@ struct
 
             and munchExp (T.MEM(T.CONST i)) =
                   result(fn r => emit(A.OPER{
-                                      assem="lw `d0, " ^ Int.toString i ^ "($zero)",
+                                      assem="lw `d0, " ^ intToString i ^ "($zero)",
                                       src=[],dst=[r],jump=NONE}))
 
                 | munchExp (T.MEM(T.BINOP(T.PLUS, e1, T.CONST i))) =
                   result(fn r => emit(A.OPER{
-                                      assem="lw `d0, " ^ Int.toString i ^ "(`s0)",
+                                      assem="lw `d0, " ^ intToString i ^ "(`s0)",
                                       src=[munchExp e1],dst=[r],jump=NONE}))
 
                 | munchExp (T.MEM(T.BINOP(T.PLUS, T.CONST i, e2))) =
                   result(fn r => emit(A.OPER{
-                                      assem="lw `d0, " ^ Int.toString i ^ "(`s0)",
+                                      assem="lw `d0, " ^ intToString i ^ "(`s0)",
                                       src=[munchExp e2],dst=[r],jump=NONE}))
 
                 | munchExp (T.MEM(T.BINOP(T.MINUS, e1, T.CONST i))) =
                   result(fn r => emit(A.OPER{
-                                      assem="lw `d0, " ^ Int.toString (~i) ^ "(`s0)",
+                                      assem="lw `d0, -" ^ intToString (i) ^ "(`s0)",
                                       src=[munchExp e1],dst=[r],jump=NONE}))
 
                 | munchExp (T.MEM(T.BINOP(T.MINUS, T.CONST i, e2))) =
                   result(fn r => emit(A.OPER{
-                                      assem="lw `d0, " ^ Int.toString (~i) ^ "(`s0)",
+                                      assem="lw `d0, -" ^ intToString (i) ^ "(`s0)",
                                       src=[munchExp e2],dst=[r],jump=NONE}))
                                 
                 (* Binary operations *)
 
                 (* Constants *)
                 | munchExp(T.CONST i) =
-                    result(fn r => emit(A.OPER{assem="addi `d0, r0, " ^ Int.toString i,
+                    result(fn r => emit(A.OPER{assem="addi `d0, $0, " ^ intToString i,
                                                src=[], dst=[r], jump=NONE}))
 
                 (* Add and subtracts *)
                 | munchExp(T.BINOP(T.PLUS,e1,T.CONST i)) =
-                    result(fn r => emit(A.OPER{assem="addi `d0, `s0, " ^ Int.toString i,
+                    result(fn r => emit(A.OPER{assem="addi `d0, `s0, " ^ intToString i,
                                                src=[munchExp e1], dst=[r], jump=NONE}))
                 | munchExp(T.BINOP(T.PLUS,T.CONST i,e1)) =
-                    result(fn r => emit(A.OPER{assem="addi `d0, `s0, " ^ Int.toString i,
+                    result(fn r => emit(A.OPER{assem="addi `d0, `s0, " ^ intToString i,
                                                src=[munchExp e1], dst=[r], jump=NONE}))
                 | munchExp(T.BINOP(T.PLUS,e1,e2)) =
                     result(fn r => emit(A.OPER{assem="add `d0, `s0, `s1",
@@ -271,30 +277,30 @@ struct
                 
                 (* And, Or, XOR *)
                 | munchExp(T.BINOP(T.AND,T.CONST i, e1)) =
-                    result(fn r => emit(A.OPER{assem="andi `d0, `s0, " ^ Int.toString i,
+                    result(fn r => emit(A.OPER{assem="andi `d0, `s0, " ^ intToString i,
                                                src=[munchExp e1], dst=[r], jump=NONE}))
                 | munchExp(T.BINOP(T.AND,e1,T.CONST i)) =
-                    result(fn r => emit(A.OPER{assem="andi `d0, `s0, " ^ Int.toString i,
+                    result(fn r => emit(A.OPER{assem="andi `d0, `s0, " ^ intToString i,
                                                src=[munchExp e1], dst=[r], jump=NONE}))
                 | munchExp(T.BINOP(T.AND,e1,e2)) =
                     result(fn r => emit(A.OPER{assem="and `d0, `s0, `s1",
                                                src=[munchExp e1, munchExp e2], dst=[r], jump=NONE}))
 
                 | munchExp(T.BINOP(T.OR,T.CONST i, e1)) =
-                    result(fn r => emit(A.OPER{assem="ori `d0, `s0, " ^ Int.toString i,
+                    result(fn r => emit(A.OPER{assem="ori `d0, `s0, " ^ intToString i,
                                                src=[munchExp e1], dst=[r], jump=NONE}))
                 | munchExp(T.BINOP(T.OR,e1,T.CONST i)) =
-                    result(fn r => emit(A.OPER{assem="ori `d0, `s0, " ^ Int.toString i,
+                    result(fn r => emit(A.OPER{assem="ori `d0, `s0, " ^ intToString i,
                                                src=[munchExp e1], dst=[r], jump=NONE}))
                 | munchExp(T.BINOP(T.OR,e1,e2)) =
                     result(fn r => emit(A.OPER{assem="or `d0, `s0, `s1",
                                                src=[munchExp e1, munchExp e2], dst=[r], jump=NONE}))
                 
                 | munchExp(T.BINOP(T.XOR,T.CONST i, e1)) =
-                    result(fn r => emit(A.OPER{assem="xori `d0, `s0, " ^ Int.toString i,
+                    result(fn r => emit(A.OPER{assem="xori `d0, `s0, " ^ intToString i,
                                                src=[munchExp e1], dst=[r], jump=NONE}))
                 | munchExp(T.BINOP(T.XOR,e1,T.CONST i)) =
-                    result(fn r => emit(A.OPER{assem="xori `d0, `s0, " ^ Int.toString i,
+                    result(fn r => emit(A.OPER{assem="xori `d0, `s0, " ^ intToString i,
                                                src=[munchExp e1], dst=[r], jump=NONE}))
                 | munchExp(T.BINOP(T.XOR,e1,e2)) =
                     result(fn r => emit(A.OPER{assem="xor `d0, `s0, `s1",
@@ -345,28 +351,28 @@ struct
 
                 (* Shifts *)
                 | munchExp(T.BINOP(T.LSHIFT,e1,T.CONST i)) =
-                    result(fn r => emit(A.OPER{assem="sll `d0, `s0 " ^ Int.toString i,
+                    result(fn r => emit(A.OPER{assem="sll `d0, `s0 " ^ intToString i,
                                                src=[munchExp e1], dst=[r], jump=NONE}))
                 | munchExp(T.BINOP(T.LSHIFT,T.CONST i,e1)) =
-                    result(fn r => emit(A.OPER{assem="sll `d0, `s0 " ^ Int.toString i,
+                    result(fn r => emit(A.OPER{assem="sll `d0, `s0 " ^ intToString i,
                                                src=[munchExp e1], dst=[r], jump=NONE}))
                 | munchExp(T.BINOP(T.LSHIFT,e1,e2)) =
                     result(fn r => emit(A.OPER{assem="sllv `d0, `s0, `s1",
                                                src=[munchExp e1, munchExp e2], dst=[r], jump=NONE}))
                 | munchExp(T.BINOP(T.RSHIFT,e1,T.CONST i)) =
-                    result(fn r => emit(A.OPER{assem="srl `d0, `s0 " ^ Int.toString i,
+                    result(fn r => emit(A.OPER{assem="srl `d0, `s0 " ^ intToString i,
                                                src=[munchExp e1], dst=[r], jump=NONE}))
                 | munchExp(T.BINOP(T.RSHIFT,T.CONST i,e1)) =
-                    result(fn r => emit(A.OPER{assem="srl `d0, `s0 " ^ Int.toString i,
+                    result(fn r => emit(A.OPER{assem="srl `d0, `s0 " ^ intToString i,
                                                src=[munchExp e1], dst=[r], jump=NONE}))
                 | munchExp(T.BINOP(T.RSHIFT,e1,e2)) =
                     result(fn r => emit(A.OPER{assem="srlv `d0, `s0, `s1",
                                                src=[munchExp e1, munchExp e2], dst=[r], jump=NONE}))
                 | munchExp(T.BINOP(T.ARSHIFT,e1,T.CONST i)) =
-                    result(fn r => emit(A.OPER{assem="sra `d0, `s0 " ^ Int.toString i,
+                    result(fn r => emit(A.OPER{assem="sra `d0, `s0 " ^ intToString i,
                                                src=[munchExp e1], dst=[r], jump=NONE}))
                 | munchExp(T.BINOP(T.ARSHIFT,T.CONST i,e1)) =
-                    result(fn r => emit(A.OPER{assem="sra `d0, `s0 " ^ Int.toString i,
+                    result(fn r => emit(A.OPER{assem="sra `d0, `s0 " ^ intToString i,
                                                src=[munchExp e1], dst=[r], jump=NONE}))
                 | munchExp(T.BINOP(T.ARSHIFT,e1,e2)) =
                     result(fn r => emit(A.OPER{assem="srav `d0, `s0, `s1",
@@ -386,18 +392,30 @@ struct
 
                 (* Calls *)
                 | munchExp (T.CALL (T.NAME l, args)) =
-                let val p = map (fn r => (Temp.newtemp (), r)) Frame.callersaves
-                    val sources = map #1 p
+                let 
+                    val _ = ()
+                    (* Allocate a local var in the frame for each caller-saved reg/temp *)
+                    (* Accesses maps temps -> accesses *)
+                    val accesses : Frame.access Temp.map = 
+                      foldl (fn (r, map) => Temp.Map.insert (map, r, Frame.allocateLocal frame true)) 
+                            Temp.Map.empty 
+                            Frame.callersaves
 
-                    fun load a r = T.MOVE (T.TEMP r, T.TEMP a)
-                    fun store a r = T.MOVE (T.TEMP a, T.TEMP r)
-                in  map (fn (a, r) => munchStm(store a r)) p;
+                    (* Returns the "backup" memory location of a caller-saved register specified by access *)
+                    fun mem (r) = let val access = valOf (Temp.Map.find (accesses, r))
+                                  in Frame.exp (access, T.TEMP Frame.FP)
+                                  end
+
+                    (* Create statements that store or load the specified register to/from local variables in the frame *)
+                    fun store (r : Temp.temp) = T.MOVE (mem r, T.TEMP r)
+                    fun load (r : Temp.temp) = T.MOVE (T.TEMP r, mem r)
+                in  map (fn (r) => munchStm(store r)) Frame.callersaves;
                     munchArgs (0, args);
                     emit(A.OPER{assem="jal `j0",
                                 src=[],
                                 dst=[],
                                 jump=SOME([l])});
-                    map (fn (a, r) => munchStm(load a r)) (List.rev p);
+                    map (fn (r) => munchStm(load r)) (List.rev Frame.callersaves);
                     Frame.RV
                 end 
 

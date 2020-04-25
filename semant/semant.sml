@@ -122,7 +122,7 @@ struct
                                                           NONE => (err pos "Unrecognized type"; S.enter (tenv, name, T.ARRAY(T.BOTTOM, ref ())))
                                                         | SOME(arrayType) => S.enter(tenv, name, T.ARRAY (arrayType, ref ()))
                                                       end
-            val {name, ty, pos} = List.nth (types, 1)
+            val {name, ty, pos} = List.nth (types, 0)
             val newTenv = ((if (List.foldl checkAbstract true types)
                             then err pos "No concrete type declared in recursive type declaration"
                             else ());
@@ -355,6 +355,7 @@ struct
 
       (* Recurse through the abstract syntax tree *)
       val ir = #exp ((transExp (mainLevel, mainLabel, venv, tenv)) absyn)
+        handle e => raise e
 
       val _ = if (!fail) then (raise TypeCheckError) else ()
 
@@ -362,4 +363,5 @@ struct
       R.procedureEntryExit (mainLevel, ir, mainLabel);
       R.result ()
     end
+    handle e => raise e
 end

@@ -1,6 +1,7 @@
 structure Temp :> TEMP =
 struct
     type temp = int
+    type ord_key = temp
 
     val labelCount = ref 0
     val temps = ref 0
