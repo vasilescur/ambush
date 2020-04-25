@@ -22,22 +22,9 @@ struct
   fun reset () = (ErrorMsg.reset(); R.reset ())
 
   (* Return value for cases where type checking failed *)
-  val err_result = {exp = R.unfinished, ty = T.NIL}
+  val err_result = {exp = R.unfinished, ty = T.UNIT}
 
   fun err pos msg = (ErrorMsg.error pos ("Type Checking Error: " ^ msg))
-
-  (* Shortcut function for type errors *)
-  fun type_err (exp, act, pos) =
-    ((err pos ("expected " ^ exp ^ ", found " ^ act)); 
-     err_result)
-
-  (*
-  val transVar: venv * tenv * Absyn.var -> expty
-  val transExp: venv * tenv * Absyn.exp -> expty
-  val transDec: venv * tenv * Absyn.dec -> {venv: venv, tenv: tenv}
-  val transTy: tenv * Absyn.ty -> Types.ty
-  *)
-  
 
   (* Gets the name of a type as a string *)
   fun type_str (T.NIL) = "nil"
@@ -46,26 +33,42 @@ struct
     | type_str (T.STRING) = "string"
     | type_str (T.NAME (sym, _)) = "name of " ^ S.name sym
     | type_str (T.ARRAY (ty, _)) = "array of " ^ type_str ty
-    | type_str (T.RECORD (_, _)) = "record"
+    | type_str (T.RECORD ([], _)) = "record"
+    | type_str (T.RECORD (fields, _)) = "{ " ^ foldl (fn ((sym, ty), str) => 
+                                                                str ^ S.name sym ^ " : " ^ (type_str ty) ^ ", ") 
+                                                         "" fields
+                                               ^ " }"
+
+  (* Generates a type mismatch message with an expected and actual *)
+  fun typeMismatch (ty1, ty2, errMsg) = 
+       errMsg ^ "\n"
+              ^ "    Expected: " ^ (type_str ty1) ^ "\n"
+              ^ "    Actual:   " ^ (type_str ty2)
+
+  (* Shortcut function for type errors *)
+  fun type_err (ty1, ty2, errMsg, pos) =
+    ((err pos (typeMismatch (ty1, ty2, errMsg))); 
+     err_result)
 
   (* Gets the *actual* type from NAME or ARRAY *)
   fun actual_ty (ty, pos) = 
     case ty of 
         T.NAME (sym, tyref) => (case (!tyref) of
-                                    NONE => (err pos ("unknown type " ^ S.name sym); T.NIL)
+                                    NONE => (err pos ("unknown type " ^ S.name sym); T.UNIT)
                                   | SOME (ty) => actual_ty (ty, pos))
       | T.ARRAY (ty, unique) => T.ARRAY(actual_ty (ty, pos), unique)
       | _ => ty
 
-
   (* Check if an expression is an integer *)
-  fun checkInt ({exp = expInt, ty = Types.INT}, pos) : exp = expInt
-    | checkInt ({exp = expInt, ty = t}, pos) : exp = (type_err ("int", type_str t, pos); expInt)
+  fun checkInt ({exp = expInt, ty = T.INT}, errMsg, pos) : exp = expInt
+    | checkInt ({exp = expInt, ty = t}, errMsg, pos) : exp = (type_err (T.INT, t, errMsg, pos); expInt)
 
-  fun checkTypesEq (ty1, ty2, pos, errMsg) = if (Types.eq (ty1, ty2))
+  (* Checks if two types are equal and if so, prints an error *)
+  fun checkTypesEq (ty1, ty2, pos, errMsg) = if (T.eq (ty1, ty2))
                                              then ()
-                                             else (err pos errMsg)
+                                             else err pos (typeMismatch (ty1, ty2, errMsg))
 
+  (* Finds a type in the tenv or returns unit *)
   fun findType (typ, tenv) = let val optType = S.look (tenv, typ)
                              in case optType of 
                                   NONE => T.UNIT
@@ -205,7 +208,7 @@ struct
 
                   val optFunc = S.look (venv, func)
               in case optFunc of 
-                                NONE => (err pos "Function undefined"; {exp=R.nilIR (), ty=T.NIL})
+                                NONE => (err pos "Function undefined"; {exp=R.nilIR (), ty=T.UNIT})
                               | SOME (entry) => case entry of 
                                               E.FunEntry ({formals, result, level=funlevel, label}) => 
                                                   let val _ = ()
@@ -220,7 +223,7 @@ struct
                                                       val _ = if checkArgs (formals, exptyArgs) then () else err pos (errMsg)
                                                   in {exp=R.callIR (funlevel, level, label, map #exp exptyArgs), ty= (!result)}
                                                   end
-                                            | E.VarEntry ({ty, access}) => (err pos "Function undefined"; {exp=R.nilIR (), ty=T.NIL})
+                                            | E.VarEntry ({ty, access}) => (err pos "Function undefined"; {exp=R.nilIR (), ty=T.UNIT})
               end
           | trexp (A.RecordExp ({fields, typ, pos})) = 
               let val (reqFields, recordType) = case (S.look (tenv, typ)) of
@@ -263,13 +266,16 @@ struct
           | trexp (A.AssignExp ({var, exp, pos})) = 
               let val trVar = trvar var
                   val trExp = trexp exp
-                  val _ = checkTypesEq (#ty trVar, #ty trExp, pos, "Assignment mismatch")
+                  val errMsg = "Assignment mismatch\n"
+                       ^ "    Expected: " ^ type_str (#ty trVar) ^ "\n"
+                       ^ "    Actual:   " ^ type_str (#ty trExp) ^ "\n"
+                  val _ = checkTypesEq (#ty trVar, #ty trExp, pos, errMsg)
               in {exp=R.assignIR (#exp trVar, #exp trExp), ty=T.NIL}
               end
           | trexp (A.IfExp ({test, then', else', pos})) = 
                 let val {exp=thenExp, ty=thenType} = (trexp then')
                     val testExp = trexp test
-                    val testCheck = checkInt (testExp, pos)
+                    val testCheck = checkInt (testExp, "If condition requires int expression", pos)
                 in case else' of
                       NONE => {exp=R.ifIR (#exp testExp, thenExp, NONE), ty=thenType}
                     | SOME (elseSome) => let val {exp=elseExp, ty=elseType} = trexp elseSome
@@ -283,7 +289,7 @@ struct
                     val transExpWhile = (transExp (level, joinLabel, venv, tenv))
                     val testTrexp = transExpWhile test
                     val bodyTrexp = transExpWhile body
-                    val testCheck = checkInt (testTrexp, pos)
+                    val testCheck = checkInt (testTrexp, "While test requires int expression", pos)
                     val testBody = checkTypesEq (#ty bodyTrexp, T.NIL, pos,
                                                  "While body does not evaluate to nil")
                 in {exp=R.whileIR (#exp testTrexp, #exp bodyTrexp, joinLabel), ty=T.NIL}
@@ -293,8 +299,8 @@ struct
                     val hiTrexp = trexp hi
                     val joinLabel = Temp.newlabel ()
                     val bodyTrexp = (transExp (level, joinLabel, S.enter (venv, var, E.VarEntry {ty=T.INT, access=R.allocateLocal level (!escape)}), tenv)) body 
-                    val checkLo = checkInt (loTrexp, pos)
-                    val checkHi = checkInt (hiTrexp,pos)
+                    val checkLo = checkInt (loTrexp, "Low value must be an integer", pos)
+                    val checkHi = checkInt (hiTrexp, "High value must be an integer", pos)
                     val checkBody = checkTypesEq (#ty bodyTrexp, 
                                                   T.NIL, pos, "For body does not evaluate to nil")
 
@@ -341,12 +347,19 @@ struct
           | trvar (A.FieldVar (v, id, pos)) = 
               let val {exp, ty} = trvar v
               in  case ty of
-                    T.RECORD (fieldList, _) => (case (List.find (fn x => (#1x) = id) fieldList) of
-                                                  NONE => (err pos ("identifier not found: " ^ S.name id);
-                                                           err_result)
+                    T.RECORD (fieldList, _) =>
+                        let 
+                        in (case (List.find (fn x => (#1 x) = id) fieldList) of
+                                                  NONE => let val errMsg = "Could not find field " ^ S.name id ^ "\n"
+                                                                    ^ "    Expected: " ^ "{ " ^ S.name id ^ " : 'a, ...}\n"
+                                                                    ^ "    Actual:   " ^ type_str ty
+                                                          in (err pos errMsg;
+                                                              err_result)
+                                                           end
                                                 | SOME (retValue) => {exp = R.unfinished,
                                                                       ty = actual_ty (#2retValue, pos)})
-                   | t => (err pos ("expected record type, found " ^ type_str t); err_result)
+                        end
+                   | t => (type_err (T.RECORD ([], ref ()), t, "Field access requires record type", pos); err_result)
               end
           | trvar (A.SubscriptVar (v, e, pos)) =
               let val {exp, ty} = trvar v
@@ -354,9 +367,9 @@ struct
                       T.ARRAY (t, _) => let val {exp = exp1, ty = ty1} = trexp e
                                         in  case ty1 of
                                                 T.INT => {exp = R.unfinished, ty = t}
-                                              | t => (err pos ("expected int in array subscript, found " ^ type_str t); err_result)
+                                              | t => (type_err (T.INT, t, "Subscript value must be an integer", pos); err_result)
                                         end
-                    | t => type_err ("array", type_str t, pos)
+                    | t => type_err (T.ARRAY (T.UNIT, ref ()), t, "Must subscript an array", pos)
               end
     in trexp
     end
