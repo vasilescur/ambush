@@ -15,7 +15,7 @@ struct
     | eq (STRING, STRING) = true
     | eq (ARRAY (_, unique1), ARRAY (_, unique2)) = (unique1 = unique2)
     | eq (RECORD(_, unique1), RECORD(_, unique2)) = (unique1 = unique2)
-    | eq (NIL, NIL) = true 
+    | eq (NIL, NIL) = true
     | eq (_, UNIT) = true
     | eq (UNIT, _) = true
     | eq (NIL, RECORD(_)) = true 
