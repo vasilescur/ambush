@@ -4,6 +4,8 @@ struct
   structure A = Absyn
   structure Err = ErrorMsg
 
+  exception TranslationFailure of string
+
   datatype level = 
       TOPLEVEL 
     | NONTOP of {unique: unit ref, parent: level, frame: F.frame}
@@ -132,6 +134,14 @@ struct
     | opIR (left, A.LeOp, right) = Ex (T.RELOP (T.LE, unEx left, unEx right))
     | opIR (left, A.GtOp, right) = Ex (T.RELOP (T.GT, unEx left, unEx right))
     | opIR (left, A.GeOp, right) = Ex (T.RELOP (T.GE, unEx left, unEx right))
+
+  fun stringOpIR (left, A.EqOp, right) = Ex (F.externalCall ("stringEqual", [unEx left, unEx right]))
+    | stringOpIR (left, A.NeqOp, right) = Ex (T.RELOP (T.EQ, F.externalCall ("stringEqual", [unEx left, unEx right]), T.CONST (0)))
+    | stringOpIR (left, A.LtOp, right) = Ex (T.RELOP (T.LT, F.externalCall ("stringCompare", [unEx left, unEx right]), T.CONST (0)))
+    | stringOpIR (left, A.LeOp, right) = Ex (T.RELOP (T.LE, F.externalCall ("stringCompare", [unEx left, unEx right]), T.CONST (0)))
+    | stringOpIR (left, A.GtOp, right) = Ex (T.RELOP (T.GT, F.externalCall ("stringCompare", [unEx left, unEx right]), T.CONST (0)))
+    | stringOpIR (left, A.GeOp, right) = Ex (T.RELOP (T.GE, F.externalCall ("stringCompare", [unEx left, unEx right]), T.CONST (0)))
+    | stringOpIR (left, _, right) = raise TranslationFailure ("Invalid string operation")
 
   fun callIR (TOPLEVEL, calllevel, label, args) = Ex (T.CALL (T.NAME label, List.map unEx args))
     | callIR (declevel as NONTOP{unique, parent, frame}, calllevel, label, args) =

@@ -5,7 +5,7 @@ struct
   structure E = Env (R)
   structure S = Symbol
   structure T = Types
-
+  structure P = PrintAbsyn
 
   type exp = R.exp
 
@@ -74,7 +74,7 @@ struct
                                   NONE => T.UNIT
                                 | SOME(found) => found
                              end
-    
+
   type env = {tenv: tenv, venv: venv}
   val base_env : env = {tenv=E.base_tenv, venv=E.base_venv}
 
@@ -97,7 +97,9 @@ struct
       end
     | transDec (level, breakLabel, venv, tenv, A.TypeDec (types)) =
         let fun checkAbstract ({name, ty, pos}, check) = case (ty) of
-                                              A.NameTy (symbol, pos) => check
+                                              A.NameTy (symbol, pos) => (case S.look (tenv, symbol) of
+                                                                          NONE => check
+                                                                        | SOME (_) => false)
                                             | A.RecordTy (fields) => false
                                             | A.ArrayTy (symbol, pos) => false
             fun addName ({name, ty, pos}, tenv) = S.enter(tenv, name, T.UNIT)
@@ -342,16 +344,54 @@ struct
                 end
           | trexp (A.BreakExp (pos)) = {exp=R.breakIR (breakLabel), ty=T.NIL}
           | trexp (A.OpExp {left, oper, right, pos}) =
-                let
-                  val leftExp = checkInt(trexp left, pos)
-                  val rightExp = checkInt(trexp right, pos)
-                in {exp=R.opIR (leftExp, oper, rightExp), ty=T.INT}
+                let val arithOperTypes = [T.INT]
+                    val equalTypes = [T.INT, 
+                                      T.STRING, 
+                                      T.ARRAY (T.UNIT, ref ()), 
+                                      T.RECORD ([], ref ()),
+                                      T.NIL]
+                    val comparisonTypes = [T.INT, T.STRING]
+                    fun operTypes (A.PlusOp) = arithOperTypes
+                      | operTypes (A.MinusOp) = arithOperTypes
+                      | operTypes (A.TimesOp) = arithOperTypes
+                      | operTypes (A.DivideOp) = arithOperTypes
+                      | operTypes (A.EqOp) = equalTypes
+                      | operTypes (A.NeqOp) = equalTypes
+                      | operTypes (A.LtOp) = comparisonTypes
+                      | operTypes (A.LeOp) = comparisonTypes
+                      | operTypes (A.GtOp) = comparisonTypes
+                      | operTypes (A.GeOp) = comparisonTypes
+                    fun match (ety) = (fn (ty, match) => match orelse T.eq (ty, ety))
+                    val operTys = operTypes (oper)
+                    val {exp=expLeft, ty=tyLeft} = trexp left
+                    val {exp=expRight, ty=tyRight} = trexp right
+                in if (T.eq (tyLeft, tyRight))
+                   then if (foldl (match (tyLeft)) false operTys)
+                        then case actual_ty (tyLeft, pos) of
+                              T.INT => {exp=R.opIR (expLeft, oper, expRight), ty=T.INT}
+                            | T.STRING => {exp=R.stringOpIR (expLeft, oper, expRight), ty=T.STRING}
+                            | r as T.RECORD (_, _) => {exp=R.opIR (expLeft, oper, expRight), ty=r}
+                            | a as T.ARRAY (_, _) => {exp=R.opIR (expLeft, oper, expRight), ty=a}
+                            | T.NIL => (case actual_ty (tyRight, pos) of
+                                        r as T.RECORD (_, _) => {exp=R.opIR (expLeft, oper, expRight), ty=r}
+                                      | _ => raise TypeCheckFailure ("Fatal: Nil type should not be type checked properly and get to this point"))
+                            | _ => raise TypeCheckFailure ("Fatal: Any other type should not have reached this point")
+                        else let val errMsg = "Operand types do not match operator " ^ (P.opname oper) ^ "\n"
+                                       ^ "    Actual: ( " ^ (type_str tyLeft) ^ " * " ^ (type_str tyRight) ^ " )"
+                                 val e = err pos errMsg
+                             in  err_result
+                             end
+                   else let val errMsg = "Operand types must match for operator " ^ (P.opname oper) ^ "\n"
+                                       ^ "    Actual: ( " ^ (type_str tyLeft) ^ " * " ^ (type_str tyRight) ^ " )"
+                            val e = err pos errMsg
+                        in  err_result
+                        end
                 end
           | trexp (A.VarExp (var)) = trvar var
           | trexp (A.ArrayExp {typ, size, init, pos}) =
               let val sizeExp = trexp size
                   val initExp = trexp init
-                  val _ = checkInt (sizeExp, pos)
+                  val _ = checkInt (sizeExp, "Array size must be initialized with an int", pos)
                   val optType = S.look (tenv, typ)
               in case optType of
                   NONE => (err pos "Unrecognized type of array"; {exp=R.unfinished, ty=T.ARRAY(#ty (trexp init), ref ())})

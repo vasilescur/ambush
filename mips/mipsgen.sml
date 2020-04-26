@@ -429,6 +429,12 @@ struct
                       map (fn (r) => munchStm(load r)) (List.rev Frame.callersaves);
                       Frame.RV
                   end
+                
+                (* No operation *)
+                | munchExp(T.NOP ()) = 
+                    result(fn r => emit(A.OPER{assem="nop",
+                                               src=[], dst=[], jump=NONE}))
+
 
                 (* Get rid of this *)
                 | munchExp(tree) = 

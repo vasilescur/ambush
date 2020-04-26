@@ -1,10 +1,22 @@
 (* Pretty-prints an abstract syntax tree. *)
 
 structure PrintAbsyn : 
-     sig val print : TextIO.outstream * Absyn.exp -> unit end =
+     sig val print : TextIO.outstream * Absyn.exp -> unit 
+         val opname : Absyn.oper -> string end =
 struct
 
   structure A = Absyn
+
+  fun opname A.PlusOp = "+"
+    | opname A.MinusOp = "-"
+    | opname A.TimesOp = "*"
+    | opname A.DivideOp = "/"
+    | opname A.EqOp = "="
+    | opname A.NeqOp = "<>"
+    | opname A.LtOp = "<"
+    | opname A.LeOp = "<="
+    | opname A.GtOp = ">"
+    | opname A.GeOp = ">="
 
   fun print (outstream, e0) =
     let fun say s =  TextIO.output(outstream,s)
@@ -12,17 +24,6 @@ struct
 
         fun indent 0 = ()
           | indent i = (say " "; indent(i-1))
-
-        fun opname A.PlusOp = "PlusOp"
-          | opname A.MinusOp = "MinusOp"
-          | opname A.TimesOp = "TimesOp"
-          | opname A.DivideOp = "DivideOp"
-          | opname A.EqOp = "EqOp"
-          | opname A.NeqOp = "NeqOp"
-          | opname A.LtOp = "LtOp"
-          | opname A.LeOp = "LeOp"
-          | opname A.GtOp = "GtOp"
-          | opname A.GeOp = "GeOp"
 
         fun dolist d f [a] = (sayln ""; f(a,d+1))
           | dolist d f (a::r) = (sayln ""; f(a,d+1); say ","; dolist d f r)

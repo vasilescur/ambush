@@ -5,6 +5,8 @@ sig
   type access
   type frag
 
+  exception TranslationFailure of string
+
   val unfinished : exp
   val outermost : level
 
@@ -20,6 +22,7 @@ sig
   val newVar : unit -> exp
   val callIR : level * level * Symbol.symbol * exp list -> exp
   val opIR : exp * Absyn.oper * exp -> exp
+  val stringOpIR : exp * Absyn.oper * exp -> exp
   val ifIR : exp * exp * exp option -> exp
   val assignIR : exp * exp -> exp
   val whileIR : exp * exp * Temp.label -> exp

@@ -218,6 +218,7 @@ exp:
 
   (* Record creation *)
   |   ID LBRACE record_field record_tail RBRACE     (A.RecordExp({fields= [record_field] @ record_tail, typ=Symbol.symbol ID , pos=IDleft}))
+  |   ID NIL                            (A.RecordExp({fields=[], typ=Symbol.symbol ID, pos=IDleft}))
 
   (* Array creation *)
   |   ID LBRACK exp RBRACK OF exp       (A.ArrayExp({typ=Symbol.symbol ID, size=exp1, init=exp2, pos=IDleft}))
