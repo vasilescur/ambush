@@ -1,12 +1,11 @@
 /* redeclaration of variable; this is legal, there are two different
    variables with the same name.  The second one hides the first.  */
 let
-	var a := 7
-	var b := 9
-	var c := 3
-
 	function add(a : int, b : int) : int =
 		a + b
+
+    function addOne (a : int) : int = 
+		add (a, 1) 
 in
-	c := add (a, b)
+	addOne (7)
 end

@@ -129,9 +129,7 @@ struct
           {exps=[], tenv=List.foldl transTypeDec newTenv types, venv=venv}
         end
     | transDec (level, breakLabel, venv, tenv, A.FunctionDec (functions)) = 
-        let fun paramsToEscapes ([], escapes) = escapes
-              | paramsToEscapes ({name, escape, typ, pos}::params, escapes) = (!escape)::escapes
-            fun addFuncSig ({name, params, result, body, pos}, venv) = 
+        let fun addFuncSig ({name, params, result, body, pos}, venv) = 
                   let fun paramToFormal ({name, escape, typ, pos}, formals) = 
                             let val optType = S.look (tenv, typ)
                                 val formal = case optType of
@@ -140,53 +138,89 @@ struct
                             in formals@[formal]
                             end
                       val formals = List.foldl paramToFormal [] params
+                      val escapes = map (fn {escape, ...} => !escape) params
+
                       val newLabel = Temp.newlabel ()
                   in case result of 
-                      NONE => S.enter(venv, name, E.FunEntry {level=R.nextLevel (level, newLabel, paramsToEscapes (params, [])), label=newLabel, formals=formals, result=ref T.UNIT})
+                      NONE => S.enter(venv, name, E.FunEntry {level=R.nextLevel (level, newLabel, escapes), label=newLabel, formals=formals, result=ref T.UNIT})
                     | SOME (resultVal, resultPos) => 
                               let val resultTy = S.look (tenv, resultVal)
                               in case resultTy of
                                   NONE => 
                                         (err resultPos "Unrecognized type"; 
                                          S.enter (venv, name,
-                                                  E.FunEntry {level=R.nextLevel (level, newLabel, paramsToEscapes (params, [])), label=newLabel, formals=formals, result=ref T.UNIT}))
+                                                  E.FunEntry {level=R.nextLevel (level, newLabel, escapes), label=newLabel, formals=formals, result=ref T.UNIT}))
                                 | SOME(resultTyVal) => 
                                         S.enter(venv, name, 
-                                                E.FunEntry {level=R.nextLevel (level, newLabel, paramsToEscapes (params, [])), label=newLabel, formals=formals, result=ref resultTyVal})
+                                                E.FunEntry {level=R.nextLevel (level, newLabel, escapes), label=newLabel, formals=formals, result=ref resultTyVal})
                                   
                               end
                   end
-            fun transFunDec ({name, params, result, body, pos}, {tenv, venv}) =
-                  let fun paramToFormal ({name, escape, typ, pos}, formals) = 
-                            let val optType = S.look (tenv, typ)
-                                val formal = case optType of
-                                               NONE => T.UNIT
-                                             | SOME (formalType) => formalType
-                            in formal::formals
-                            end
-                      fun addParam ({name, escape, typ, pos}, {tenv, venv}) = 
-                            let val paramType = findType (typ, tenv)
-                                val newVenv = S.enter (venv, name, E.VarEntry {ty=paramType, access=R.allocateLocal level (!escape)})
-                            in {tenv=tenv, venv=newVenv}
-                            end
-                      val formals = (List.foldl paramToFormal [] params)
-                      val newVenv = #venv (List.foldl addParam {tenv=tenv, venv=venv} params)
-                      val bodyExpty = transExp (level, breakLabel, newVenv, tenv) body
-                      val newVenv = case S.look (venv, name) of 
-                                NONE => venv
-                              | SOME(E.FunEntry {level, label, formals, result}) => (R.procedureEntryExit (level, #exp bodyExpty, label); 
-                                                                                     result := (#ty bodyExpty); 
-                                                                                     venv)
-                              | SOME(_) => raise TypeCheckFailure "Found variable name when looking for function signature"
-                  in case result of 
-                      NONE => {tenv=tenv, venv=newVenv}
-                    | SOME (resultSym, resultPos) => (checkTypesEq (#ty bodyExpty, findType (resultSym, tenv), resultPos, "Function return type does not match body type check"); {tenv=tenv, venv=venv})
-                    (* Need procedureEntryExit call? *)
-                  end
-            val newVenv = List.foldl addFuncSig venv functions
-            val funDecs = (List.foldl transFunDec {tenv=tenv, venv=newVenv} functions)
-        in {exps= [], tenv=tenv, venv= #venv funDecs}
-        end
+        in  let val venv' = foldl addFuncSig venv functions
+                fun transFunDec ({name, params, result, body, pos}, {tenv, venv}) =
+                  let val SOME (E.FunEntry {result, level=newLevel, label=label', ...}) = S.look (venv', name)
+
+                      fun translateParameter ({name, escape, typ, pos}, access) =
+                        case S.look (tenv, typ) of 
+                            SOME t => {access=access, name=name, ty=t}
+                          | NONE => ((err pos ("Invalid method parameter type " ^ S.name typ ^ "."));
+                                    {access=access, name=name, ty=T.UNIT})
+
+                      val params' = ListPair.map translateParameter (params, R.formals newLevel)
+
+                      val venv'' = foldl (fn ({access, name, ty}, env) =>
+                                            S.enter (env, name, E.VarEntry {access=access, ty=ty}))
+                                         venv'
+                                         params' 
+
+                      val {exp, ty} = transExp (newLevel, breakLabel, venv'', tenv) body 
+                  in  (R.procedureEntryExit (newLevel, exp, label');
+                      {venv=venv', tenv=tenv})
+                  end 
+            in  let val {venv, tenv} = foldl transFunDec {tenv=tenv, venv=venv} functions
+                in  ({exps=[], tenv=tenv, venv=venv}) 
+                end
+            end
+        end 
+
+
+              (* let fun paramToFormal ({name, escape, typ, pos}, formals) = 
+                        let val optType = S.look (tenv, typ)
+                            val formal = case optType of
+                                            NONE => T.UNIT
+                                          | SOME (formalType) => formalType
+                        in formal::formals
+                        end
+                  fun addParam ({name, escape, typ, pos}, {tenv, venv}) = 
+                        let val paramType = findType (typ, tenv)
+                            val newVenv = S.enter (venv, name, E.VarEntry {ty=paramType, access=R.allocateLocal level (!escape)})
+                        in {tenv=tenv, venv=newVenv}
+                        end
+                  val formals = (List.foldl paramToFormal [] params)
+                  val newVenv = #venv (List.foldl addParam {tenv=tenv, venv=venv} params)
+                  val bodyExpty = transExp (level, breakLabel, newVenv, tenv) body
+                  val newVenv = case S.look (venv, name) of 
+                            NONE => venv
+                          | SOME(E.FunEntry {level=level', label=label', formals=formals', result=result'}) => 
+                                  (R.procedureEntryExit (level', #exp bodyExpty, label'); 
+                                    result' := (#ty bodyExpty);
+                                    venv)
+                          | SOME(_) => raise TypeCheckFailure "Found variable name when looking for function signature"
+              in case result of 
+                  NONE => {tenv=tenv, venv=newVenv}
+                | SOME (resultSym, resultPos) => (checkTypesEq (#ty bodyExpty, findType (resultSym, tenv), resultPos, "Function return type does not match body type check"); {tenv=tenv, venv=venv})
+                (* Need procedureEntryExit call? *)
+              end *)
+            
+            (* fun transFunDec' ({name, params, result, body, pos}, {tenv, venv}) =
+              let val SOME (E.FunEntry {result, level})
+              in  
+              end  *)
+              
+            (* val newVenv = List.foldl addFuncSig venv functions *)
+            (* val funDecs = (List.foldl transFunDec {tenv=tenv, venv=newVenv} functions) *)
+        (* in {exps= [], tenv=tenv, venv= #venv funDecs}
+        end *)
 
     and transExp(level, breakLabel, venv, tenv) = 
     let val env : env = {venv = venv, tenv = tenv}
@@ -362,7 +396,7 @@ struct
     end
 
   fun transProg (absyn : Absyn.exp) =
-    let val _ = ()
+    let val _ = R.reset ()
         (* Create the tenv and venv *)
         val venv : venv = E.base_venv
         val tenv : tenv = E.base_tenv
@@ -373,11 +407,12 @@ struct
         (* Recurse through the abstract syntax tree *)
         val ir = #exp ((transExp (mainLevel, mainLabel, venv, tenv)) absyn)
 
-        val _ = if (!ErrorMsg.anyErrors) then (raise TypeCheckError ([])) else ()
-        val result = R.result ()
-        val _ = reset ()
 
-    in R.procedureEntryExit (mainLevel, ir, mainLabel); result
+
+        val _ = if (!ErrorMsg.anyErrors) then (raise TypeCheckError ([])) else ()
+        val _ = ErrorMsg.reset ()
+
+    in R.procedureEntryExit (mainLevel, ir, mainLabel); R.result ()
     end
     handle e => raise e
 end

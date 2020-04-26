@@ -221,29 +221,40 @@ struct
                 (* Memory operations *)
 
             and munchExp (T.MEM(T.CONST i)) =
-                  result(fn r => emit(A.OPER{
-                                      assem="lw   `d0, " ^ intToString i ^ "($zero)",
-                                      src=[],dst=[r],jump=NONE}))
+                  result(fn r => emit(A.OPER{assem="lw   `d0, " ^ intToString i ^ "($zero)",
+                                             src=[],
+                                             dst=[r],
+                                             jump=NONE}))
+
+                | munchExp (T.MEM (T.TEMP t)) = 
+                  result(fn r => emit(A.OPER{assem="lw   `d0, 0(`s0)",
+                                             src=[t], 
+                                             dst=[r], 
+                                             jump=NONE}))
 
                 | munchExp (T.MEM(T.BINOP(T.PLUS, e1, T.CONST i))) =
-                  result(fn r => emit(A.OPER{
-                                      assem="lw   `d0, " ^ intToString i ^ "(`s0)",
-                                      src=[munchExp e1],dst=[r],jump=NONE}))
+                  result(fn r => emit(A.OPER{assem="lw   `d0, " ^ intToString i ^ "(`s0)",
+                                             src=[munchExp e1],
+                                             dst=[r],
+                                             jump=NONE}))
 
                 | munchExp (T.MEM(T.BINOP(T.PLUS, T.CONST i, e2))) =
-                  result(fn r => emit(A.OPER{
-                                      assem="lw   `d0, " ^ intToString i ^ "(`s0)",
-                                      src=[munchExp e2],dst=[r],jump=NONE}))
+                  result(fn r => emit(A.OPER{assem="lw   `d0, " ^ intToString i ^ "(`s0)",
+                                             src=[munchExp e2],
+                                             dst=[r],
+                                             jump=NONE}))
 
                 | munchExp (T.MEM(T.BINOP(T.MINUS, e1, T.CONST i))) =
-                  result(fn r => emit(A.OPER{
-                                      assem="lw   `d0, -" ^ intToString (i) ^ "(`s0)",
-                                      src=[munchExp e1],dst=[r],jump=NONE}))
+                  result(fn r => emit(A.OPER{assem="lw   `d0, -" ^ intToString (i) ^ "(`s0)",
+                                             src=[munchExp e1],
+                                             dst=[r],
+                                             jump=NONE}))
 
                 | munchExp (T.MEM(T.BINOP(T.MINUS, T.CONST i, e2))) =
-                  result(fn r => emit(A.OPER{
-                                      assem="lw   `d0, -" ^ intToString (i) ^ "(`s0)",
-                                      src=[munchExp e2],dst=[r],jump=NONE}))
+                  result(fn r => emit(A.OPER{assem="lw   `d0, -" ^ intToString (i) ^ "(`s0)",
+                                             src=[munchExp e2],
+                                             dst=[r],
+                                             jump=NONE}))
                                 
                 (* Binary operations *)
 
@@ -392,36 +403,42 @@ struct
 
                 (* Calls *)
                 | munchExp (T.CALL (T.NAME l, args)) =
-                let 
-                    val _ = ()
-                    (* Allocate a local var in the frame for each caller-saved reg/temp *)
-                    (* Accesses maps temps -> accesses *)
-                    val accesses : Frame.access Temp.map = 
-                      foldl (fn (r, map) => Temp.Map.insert (map, r, Frame.allocateLocal frame true)) 
-                            Temp.Map.empty 
-                            Frame.callersaves
+                  let
+                      val _ = ()
+                      (* Allocate a local var in the frame for each caller-saved reg/temp *)
+                      (* Accesses maps temps -> accesses *)
+                      val accesses : Frame.access Temp.map = 
+                        foldl (fn (r, map) => Temp.Map.insert (map, r, Frame.allocateLocal frame true)) 
+                              Temp.Map.empty 
+                              Frame.callersaves
 
-                    (* Returns the "backup" memory location of a caller-saved register specified by access *)
-                    fun mem (r) = let val access = valOf (Temp.Map.find (accesses, r))
-                                  in Frame.exp (access, T.TEMP Frame.FP)
-                                  end
+                      (* Returns the "backup" memory location of a caller-saved register specified by access *)
+                      fun mem (r) = let val access = valOf (Temp.Map.find (accesses, r))
+                                    in Frame.exp (access, T.TEMP Frame.FP)
+                                    end
 
-                    (* Create statements that store or load the specified register to/from local variables in the frame *)
-                    fun store (r : Temp.temp) = T.MOVE (mem r, T.TEMP r)
-                    fun load (r : Temp.temp) = T.MOVE (T.TEMP r, mem r)
-                in  map (fn (r) => munchStm(store r)) Frame.callersaves;
-                    munchArgs (0, args);
-                    emit(A.OPER{assem="jal  `j0",
-                                src=[],
-                                dst=[],
-                                jump=SOME([l])});
-                    map (fn (r) => munchStm(load r)) (List.rev Frame.callersaves);
-                    Frame.RV
-                end 
+                      (* Create statements that store or load the specified register to/from local variables in the frame *)
+                      fun store (r : Temp.temp) = T.MOVE (mem r, T.TEMP r)
+                      fun load (r : Temp.temp) = T.MOVE (T.TEMP r, mem r)
+                  in  map (fn (r) => munchStm(store r)) Frame.callersaves;
+                      munchArgs (0, args);
+                      emit(A.OPER{assem="jal  `j0",
+                                  src=Frame.argregs,
+                                  dst=[Frame.RV],
+                                  jump=SOME([l])});
+                      map (fn (r) => munchStm(load r)) (List.rev Frame.callersaves);
+                      Frame.RV
+                  end
 
                 (* Get rid of this *)
-                | munchExp(_) = result(fn r => emit(A.LABEL {assem="MISSING EXP", 
+                | munchExp(tree) = 
+                    let val _ = print ("Missing expr: ")
+                        val _ = Printtree.printtree (TextIO.stdOut, T.EXP (tree))
+                        val _ = print "\n"
+
+                    in result(fn r => emit(A.LABEL {assem="MISSING EXP", 
                                                               lab=Temp.newlabel ()}))
+                    end
 
 
             and munchArgs (_, nil) = nil 

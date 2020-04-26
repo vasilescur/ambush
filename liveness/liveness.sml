@@ -202,6 +202,8 @@ struct
 
   fun print (IGRAPH {graph, ...}) = 
         let fun stringify (nid, temp) = Temp.makestring temp
-        in LiveG.printGraph stringify graph true
+        in LiveG.printGraphVis stringify graph
         end
+
+  
 end

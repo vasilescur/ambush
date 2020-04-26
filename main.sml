@@ -20,8 +20,9 @@ struct
             val {prolog, body, epilog} = F.procEntryExit3 (frame, instrs)
 
             (* Format those instructions using temp names *)
-            (* val formatFun = Assem.format(Temp.makestring) *)
+            val formatFun = Assem.format(Temp.makestring)
 
+            (* Register allocator go brrrrrr *)
             val (instrs, allocation) = R.alloc (body, frame)
               handle e => raise e
             
@@ -34,13 +35,13 @@ struct
             val _ = print("\n") *)
 
             (*Instead of formatting with temp names, format with allocated reg names *)
-            val formatFun = 
+            (* val formatFun = 
               Assem.format (fn (temp) => case (Temp.Map.find (allocation, temp)) of 
                                                           NONE => "NotFound"
                                                         | SOME (register) => register)  
-                handle e => (raise e)
+                handle e => (raise e) *)
 
-        in  (TextIO.output (out, prolog); 
+        in  (TextIO.output (out, prolog);
             (* TextIO.output (out, ".text\n"); *)
             (app (fn i => let val instruction = (formatFun i)
                           in  TextIO.output(out, instruction ^ "\n")
@@ -66,6 +67,6 @@ struct
           
        in  if (!fail) then ()
            else withOpenFile (filename ^ ".s")
-	                      (fn out => (TextIO.output (out, F.jumpStart); (app (emitproc out) (List.rev frags))))
+                          (fn out => (TextIO.output (out, F.jumpStart); (app (emitproc out) ((*List.rev*) frags))))
        end
 end

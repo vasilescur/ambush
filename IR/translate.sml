@@ -48,6 +48,7 @@ struct
 
 
   val errexp = ()
+  
   fun seq (e :: exps) = T.SEQ(e, seq exps)
     | seq ([]) = T.EXP (T.CONST 0)
 
@@ -231,8 +232,8 @@ struct
               TOPLEVEL => (Err.error 0 "Illegal function declaration in outermost level";
                            F.nextFrame ({name = label, formals = []}))
             | NONTOP ({unique = _, parent = _, frame = frame'}) => frame'
-        val trBody = unNx body'
-        val trBody' = F.procEntryExit1(levelFrame, trBody)
+        val trBody = unEx body'
+        val trBody' = F.procEntryExit1(levelFrame, T.MOVE(T.TEMP F.RV, trBody))
     in  (* Append to frag list *)
         (* print "procedureEntryExit just added to fragList\n"; *)
         fragList := F.PROC ({body = trBody', frame = levelFrame}) :: (!fragList)

@@ -23,14 +23,14 @@ struct
 
   structure RSet = ListSetFn (RegisterKey)
 
-  val registerTemps = (List.foldl (fn ((k, v), list) => k::list) [] (Temp.Map.listItemsi F.tempMap))
-  val registerNames = (List.foldl (fn ((k, v), list) => v::list) [] (Temp.Map.listItemsi F.tempMap))
+  (* val registerTemps = (List.foldl (fn ((k, v), list) => k::list) [] (Temp.Map.listItemsi F.tempMap)) *)
+  (* val registerNames = (List.foldl (fn ((k, v), list) => v::list) [] (Temp.Map.listItemsi F.tempMap)) *)
 
   fun color ({interference : Liveness.igraph, initial : allocation, spillCost : Liveness.node -> int, registers : F.register list}) =
         let val Liveness.IGRAPH {graph, tnode, gtemp, moves} = interference
             val (worklist, moveNodes) = setupWorklist (interference, initial)
             val simplified = simplify (worklist, graph, gtemp)
-            val selectedWorklist = select (simplified, graph, gtemp, tnode)
+            val selectedWorklist = select (simplified, graph, gtemp, tnode, registers)
             val colored : allocation = W.colored (selectedWorklist)
         in  (colored, moveNodes)
         end
@@ -62,8 +62,8 @@ struct
 
   and simplify (worklist, graph, gtemp) = Temp.Set.foldl W.stack worklist (W.simplify (worklist))
 
-  and select (worklist, graph, gtemp, tnode) =
-        let val colorSet = RSet.addList (RSet.empty, registerNames)
+  and select (worklist, graph, gtemp, tnode, registers) =
+        let val colorSet = RSet.addList (RSet.empty, registers)
             fun selectColor (temp, worklist) = 
               let val node = tnode (temp)
                   fun removeColors (node, colors) = 

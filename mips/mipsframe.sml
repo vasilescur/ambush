@@ -7,13 +7,14 @@ struct
   structure S = Symbol
 
   datatype access = 
-      InFrame of int 
+      InFrame of int
     | InReg of Temp.temp
 
   type frame = {name      : Temp.label, 
                 formals   : access list,
                 numLocals : int ref, 
-                curOffset : int ref}
+                curOffset : int ref,
+                shifts    : T.stm list }
 
   datatype frag =
       PROC   of {body : Tree.stm, frame : frame} 
@@ -49,7 +50,6 @@ struct
   val t7 = Temp.newtemp ()
   val t8 = Temp.newtemp ()
   val t9 = Temp.newtemp ()
-  val callersaves = [t0, t1, t2, t3, t4, t5, t6, t7, t8, t9]
 
   (* Saved (callee-saved) *)
   val s0 = Temp.newtemp ()
@@ -60,7 +60,6 @@ struct
   val s5 = Temp.newtemp ()
   val s6 = Temp.newtemp ()
   val s7 = Temp.newtemp ()
-  val calleesaves = [s0, s1, s2, s3, s4, s5, s6, s7] 
 
   (* Special registers *)
   val FP = Temp.newtemp ()
@@ -70,12 +69,17 @@ struct
   val GP = Temp.newtemp ()
   val specialregs = [RV, FP, SP, RA]
 
+  val callersaves = [t0, t1, t2, t3, t4, t5, t6, t7, t8, t9]
+  val calleesaves = [s0, s1, s2, s3, s4, s5, s6, s7] 
+
   val jumpStart = ".text\n    j    L0\n"
 
   (* Categories of registers *)
 
   val regList =
-    [("$a0", a0), ("$a1", a1), ("$a2", a2), ("$a3", a3), 
+    [ ("$v0", v0), ("$v1", v1),
+      
+      ("$a0", a0), ("$a1", a1), ("$a2", a2), ("$a3", a3), 
     
      ("$t0", t0), ("$t1", t1), ("$t2", t2), ("$t3", t3), 
      ("$t4", t4), ("$t5", t5), ("$t6", t6), ("$t7", t7), 
@@ -84,7 +88,7 @@ struct
      ("$s0", s0), ("$s1", s1), ("$s2", s2), ("$s3", s3), 
      ("$s4", s4), ("$s5", s5), ("$s6", s6), ("$s7", s7), 
      
-     ("$fp", FP), ("$v0", RV), ("$sp", SP), ("$ra", RA)]
+     ("$fp", FP), ("$sp", SP), ("$ra", RA)]
 
   val tempMap = List.foldl (fn ((name, temp), map) => Temp.Map.insert (map, temp, name)) Temp.Map.empty regList
 
@@ -92,22 +96,22 @@ struct
 
   val availableRegisters : register list =
     List.map (fn (name) => case (Temp.Map.find (tempMap, name)) of
-                              NONE     => "$ERR"
+                              NONE     => ("$ERR")
                             | SOME (r) => r)
-             (calleesaves @ callersaves @ argregs @ valregs)
+             ([a1, a2, a3] @ valregs @ calleesaves @ callersaves)
 
   val wordSize = 4 
   val argRegisters = 4
 
   (* Getters *)
-  fun name {name = symbol, formals = _, numLocals = _, curOffset = _} = Symbol.name symbol
-  fun formals {name = _, formals = formals, numLocals = _, curOffset = _} = formals
+  fun name {name = symbol, formals = _, numLocals = _, curOffset = _, shifts = _} = Symbol.name symbol
+  fun formals {name = _, formals = formals, numLocals = _, curOffset = _, shifts = _} = formals
 
   fun allocateLocal frame' escape = 
         let
-            fun incrementNumLocals {name=_, formals=_, numLocals=x, curOffset=_} = x := !x + 1
-            fun incrementOffset {name=_, formals=_, numLocals=_, curOffset=x} = x := !x - wordSize
-            fun getOffsetValue {name=_, formals=_, numLocals=_, curOffset=x} = !x
+            fun incrementNumLocals {name=_, formals=_, numLocals=x, curOffset=_, shifts = _} = x := !x + 1
+            fun incrementOffset {name=_, formals=_, numLocals=_, curOffset=x, shifts = _} = x := !x - wordSize
+            fun getOffsetValue {name=_, formals=_, numLocals=_, curOffset=x, shifts = _} = !x
         in
             incrementNumLocals frame';
             case escape of
@@ -115,7 +119,7 @@ struct
               | false => InReg(Temp.newtemp())
         end
 
-  fun printFrame {name = name', formals = formals', numLocals = numLocals', curOffset = currentOffset'} =
+  fun printFrame {name = name', formals = formals', numLocals = numLocals', curOffset = currentOffset', shifts = _} =
     (print ("FRAME <" ^ (Symbol.name name') ^ "> (" ^ Int.toString(!numLocals') ^ " locals, current offset = " ^ Int.toString(!currentOffset') ^ ")\n"))
 
   fun externalCall (s, args) =
@@ -123,42 +127,142 @@ struct
     (* Tree.CALL(Tree.NAME(Temp.namedlabel s), args) *)
     Tree.NOP ()
 
+  (* ost = offset *)
+  fun exp (InFrame (ost), frameaddr) = Tree.MEM (Tree.BINOP (Tree.PLUS, frameaddr, Tree.CONST (ost)))
+    | exp (InReg (temp), frameaddr) = Tree.TEMP (temp)
+
   fun procEntryExit1(frame', stm') = 
-    stm'
+    (* TODO: For each incoming register parameter, move it to the place
+             from which it is seen from within the function.  *)
+
+    (* Save callee-saved registers *)
+    let val {name, formals, numLocals, curOffset, shifts} : frame = frame'
+
+        (* Print the formals for debugging *)
+        val _ = print ("Formals available in frame of function " ^ Symbol.name (name) ^ ": \n")
+        val _ = map (fn fml => (let val loc = case fml of 
+                                                  InFrame (n) => "frame " ^ Int.toString (n) 
+                                                | InReg (tmp) => Temp.makestring tmp
+                               in  (print ("  " ^ loc ^ "\n"))
+                               end))
+                    formals
+    
+        val accesses : access Temp.map = 
+          foldl (fn (r, map) => Temp.Map.insert (map, r, allocateLocal frame' true))
+                Temp.Map.empty
+                ([RA, SP, FP] @ calleesaves)
+
+        (* Returns the backup memory location of a callee-saved register *)
+        fun mem (r) = let val access = valOf (Temp.Map.find (accesses, r))
+                      in  exp (access, T.TEMP FP)
+                      end 
+
+        (* Create statements that store or load the specified register *)
+        fun store (r : Temp.temp) = T.MOVE (mem r, T.TEMP r)
+        fun load (r : Temp.temp) = T.MOVE (T.TEMP r, mem r)
+
+        (* Make those statements for everything we need to save/restore *)
+        val storeStms = map store ([RA, SP, FP] @ calleesaves)
+        val loadStms = map load (List.rev ([RA, SP, FP] @ calleesaves))
+
+        (* Makes a tree sequence *)
+        fun seq (e :: exps) = T.SEQ(e, seq exps)
+          | seq ([]) = T.EXP (T.CONST 0)
+        
+    in  (* Append save/restore on either end of the body *)
+        seq (shifts @ storeStms @ [stm'] @ loadStms)
+    end
+
 
   fun procEntryExit2(frame, body) =
-    (* body *)
-    body @
+    body
+    (* body @
     [A.OPER{assem="",
-    src =[ZERO,RA,SP] @ calleesaves,   
-    dst=[], jump=SOME[]}]
+    src =[ZERO,RA,SP] @ calleesaves,
+    dst=[], jump=SOME[]}] *)
 
-  fun procEntryExit3({name, formals, numLocals, curOffset}, body) =
-    {prolog = ".text\n# PROCEDURE " ^ Symbol.name name ^ "\n" ^ Symbol.name name ^ ": \n",
-      body = body,
-      epilog = "# END " ^ Symbol.name name ^ "\n\n"}
+  fun procEntryExit3({name, formals, numLocals, curOffset, shifts}, body) =
+    let val oset = (!numLocals + (List.length argregs)) * wordSize
+    in  {prolog = ".text\n# PROCEDURE " ^ Symbol.name name ^ "\n" 
+                    ^ Symbol.name name ^ ": \n"
+                    ^ "    sw   $fp, 0($sp)\n"
+                    ^ "    move $fp, $sp\n"
+                    ^ "    addi $sp, $sp, -" ^ Int.toString oset ^ "\n",
+         body = body,
+         epilog =   "    move $sp, $fp\n"
+                  ^ "    lw   $fp, 0($sp)\n"
+                  ^ "    jr   $ra\n"
+                  ^ "# END " ^ Symbol.name name ^ "\n\n"}
+    end
+    
 
   
   fun string (label, str) = 
     (".data\n" ^ Symbol.name label ^ ": .asciiz \"" ^ str ^ "\"\n")
 
-  fun exp (fraccess, frameaddr) =  (* frameaddr is the frame pointer as a tree expression *)
-    case fraccess of
-        InFrame offset => Tree.MEM(Tree.BINOP(Tree.PLUS, frameaddr, Tree.CONST offset))
-      | InReg temp => Tree.TEMP (temp)
+
+
+  (* fun createAccess (n : int ref, escape : bool) : access =
+    case escape of 
+        true =>  (n := !n - wordSize;
+                  InFrame (!n + wordSize))
+      | false => InReg(Temp.newtemp())
+
 
   
-  fun nextFrame {name, formals} = 
-        let fun allocateFormals(offset, [], allocList, numRegs) = allocList
-              | allocateFormals(offset, curFormal::l, allocList, numRegs) = 
+
+  fun nextFrame {name : Temp.label, formals : bool list} =
+    let val _ = if (List.length formals) > 4 then raise TooManyArguments else ()
+        val n : int ref = ref 0;
+        val formals' : access list = map (fn (e) => createAccess (n, e)) formals
+    in  {name=name, formals=formals', numLocals=n, curOffset=ref (!n * 4)} : frame 
+    end  *)
+
+  exception TooManyArguments of string
+
+  fun nextFrame ({name : Temp.label, formals : bool list}) : frame = 
+    let val n = ref 0
+        fun iterate ([], _, _) = [] 
+          | iterate (head :: tail, [], oset) = 
+              if head then (n := !n + 1; 
+                            InFrame (oset) :: iterate (tail, [], oset + wordSize))
+              else raise TooManyArguments ("Cannot handle more than 3 formals")
+          | iterate (head :: tail, reg::regs, oset) = 
+              if head then
+                  (n := !n + 1; 
+                   InFrame(oset) :: iterate(tail, regs, oset + wordSize))
+              else InReg(reg) :: iterate(tail, regs, oset)
+
+        val accesses : access list = iterate (false :: formals, argregs, wordSize)
+
+        fun viewShift (ac, r) = T.MOVE (exp (ac, (T.TEMP FP)), T.TEMP r)
+
+        (* Make the move instructions *)
+        val moveInstrs = (ListPair.map viewShift) (accesses, argregs)
+    in  case (List.length formals) <= (List.length argregs) of
+            true =>  {name=name,
+                      formals=accesses,
+                      numLocals=n,
+                      curOffset=ref (!n * wordSize),
+                      shifts=moveInstrs} : frame 
+          | false => raise TooManyArguments ("Too many args (" ^ Int.toString (!n) ^ ")") 
+    end 
+
+
+  (* fun nextFrame {name, formals} = 
+        let val numLocals = ref 0
+            fun allocateFormals(oset, [], allocList, numRegs) = (numLocals := oset; allocList)
+              | allocateFormals(oset, curFormal::l, allocList, numRegs) = 
                   case curFormal of
-                       true => allocateFormals (offset + wordSize, l, (InFrame offset)::allocList, numRegs)
+                       true => allocateFormals (oset + 1, l, (InFrame (oset * wordSize))::allocList, numRegs)
                      | false => 
                          if   numRegs < 4
-                         then allocateFormals (offset, l, (InReg(Temp.newtemp()))::allocList, numRegs + 1)
-                         else allocateFormals (offset + wordSize, l, (InFrame offset)::allocList, numRegs)
-        in  {name=name, formals=allocateFormals(0, formals, [], 0),
-            numLocals=ref 0, curOffset=ref 0}
-        end
+                         then allocateFormals (oset, l, (InReg(Temp.newtemp()))::allocList, numRegs + 1)
+                         else allocateFormals (oset + 1, l, (InFrame (oset * wordSize))::allocList, numRegs)
+        in  {name=name, 
+             formals=allocateFormals(0, formals, [], 0),
+             numLocals=numLocals,
+             curOffset=ref (!numLocals * wordSize)}
+        end *)
 
 end
