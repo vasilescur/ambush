@@ -135,8 +135,10 @@ struct
     | opIR (left, A.GtOp, right) = Ex (T.RELOP (T.GT, unEx left, unEx right))
     | opIR (left, A.GeOp, right) = Ex (T.RELOP (T.GE, unEx left, unEx right))
 
-  fun stringOpIR (left, A.EqOp, right) = Ex (F.externalCall ("stringEqual", [unEx left, unEx right]))
-    | stringOpIR (left, A.NeqOp, right) = Ex (T.RELOP (T.EQ, F.externalCall ("stringEqual", [unEx left, unEx right]), T.CONST (0)))
+  (* fun stringCompare (left, right) = Ex () *)
+
+  fun stringOpIR (left, A.EqOp, right) = Ex (F.externalCall ("tig_stringEqual", [unEx left, unEx right]))
+    | stringOpIR (left, A.NeqOp, right) = Ex (T.RELOP (T.EQ, F.externalCall ("tig_stringEqual", [unEx left, unEx right]), T.CONST (0)))
     | stringOpIR (left, A.LtOp, right) = Ex (T.RELOP (T.LT, F.externalCall ("stringCompare", [unEx left, unEx right]), T.CONST (0)))
     | stringOpIR (left, A.LeOp, right) = Ex (T.RELOP (T.LE, F.externalCall ("stringCompare", [unEx left, unEx right]), T.CONST (0)))
     | stringOpIR (left, A.GtOp, right) = Ex (T.RELOP (T.GT, F.externalCall ("stringCompare", [unEx left, unEx right]), T.CONST (0)))
@@ -224,12 +226,14 @@ struct
                                                                                         T.CONST (counter * F.wordSize))),
                                                                 unEx exp))::fields (fexps, counter + 1)
                                           val head = T.MOVE (T.TEMP record,
-                                                             (F.externalCall ("allocRecord", [T.CONST(recordSize * F.wordSize)])))
+                                                             (F.externalCall ("tig_allocRecord", [T.CONST(recordSize * F.wordSize)])))
                                           fun setUpRecord () = head::fields(exps, 0)
                                       in Ex (T.ESEQ (seq (setUpRecord ()), T.TEMP record))
                                       end
 
-  fun arrayIR (sizeExp, initExp) = Ex (F.externalCall ("initArray", [unEx sizeExp, unEx initExp]))
+  fun arrayIR (sizeExp, initExp) = Ex (F.externalCall ("tig_initArray", [unEx sizeExp, unEx initExp]))
+
+  fun subscriptIR (arrayExp, subscriptExp) = Ex (T.MEM (T.BINOP (T.PLUS, unEx arrayExp, T.BINOP (T.MUL, unEx subscriptExp, T.CONST F.wordSize))))
 
   fun letIR (decExps, bodyExp) = let fun stm (dec) = unNx dec
                                  in Ex (T.ESEQ (seq (List.map stm decExps), unEx bodyExp))

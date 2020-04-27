@@ -369,9 +369,9 @@ struct
                    then if (foldl (match (tyLeft)) false operTys)
                         then case actual_ty (tyLeft, pos) of
                               T.INT => {exp=R.opIR (expLeft, oper, expRight), ty=T.INT}
-                            | T.STRING => {exp=R.stringOpIR (expLeft, oper, expRight), ty=T.STRING}
-                            | r as T.RECORD (_, _) => {exp=R.opIR (expLeft, oper, expRight), ty=r}
-                            | a as T.ARRAY (_, _) => {exp=R.opIR (expLeft, oper, expRight), ty=a}
+                            | T.STRING => {exp=R.stringOpIR (expLeft, oper, expRight), ty=T.INT}
+                            | T.RECORD (_, _) => {exp=R.opIR (expLeft, oper, expRight), ty=T.INT}
+                            | T.ARRAY (_, _) => {exp=R.opIR (expLeft, oper, expRight), ty=T.INT}
                             | T.NIL => (case actual_ty (tyRight, pos) of
                                         r as T.RECORD (_, _) => {exp=R.opIR (expLeft, oper, expRight), ty=r}
                                       | _ => raise TypeCheckFailure ("Fatal: Nil type should not be type checked properly and get to this point"))
@@ -435,12 +435,12 @@ struct
                         end
                    | t => (type_err (T.RECORD ([], ref ()), t, "Field access requires record type", pos); err_result)
               end
-          | trvar (A.SubscriptVar (v, e, pos)) =
-              let val {exp, ty} = trvar v
-              in  case actual_ty (ty, pos) of
-                      T.ARRAY (t, _) => let val {exp = exp1, ty = ty1} = trexp e
-                                        in  case ty1 of
-                                                T.INT => {exp = R.unfinished, ty = t}
+          | trvar (A.SubscriptVar (arr, sub, pos)) =
+              let val {exp=arrExp, ty=arrTy} = trvar arr
+              in  case actual_ty (arrTy, pos) of
+                      T.ARRAY (arrType, _) => let val {exp = subExp, ty = subTy} = trexp sub
+                                        in  case subTy of
+                                                T.INT => {exp = R.subscriptIR (arrExp, subExp), ty = arrType}
                                               | t => (type_err (T.INT, t, "Subscript value must be an integer", pos); err_result)
                                         end
                     | t => type_err (T.ARRAY (T.UNIT, ref ()), t, "Must subscript an array", pos)
@@ -453,7 +453,7 @@ struct
         (* Create the tenv and venv *)
         val venv : venv = E.base_venv
         val tenv : tenv = E.base_tenv
-        val mainLabel = Temp.newlabel ()
+        val mainLabel = Temp.namedlabel ("tig_main")
 
         val mainLevel = R.nextLevel (R.outermost, mainLabel, [])
 

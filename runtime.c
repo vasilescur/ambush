@@ -27,18 +27,6 @@ int stringEqual(struct string *s, struct string *t)
  return 1;
 }
 
-/*
-I haven't written in C in a while
-TODO: didn't wanna write something that doesn't make sense.
-*/
-int stringCompare(struct string *s, struct string *t)
-{return 0;}
-
-void print(struct string *s)
-{int i; unsigned char *p=s->chars;
- for(i=0;i<s->length;i++,p++) putchar(*p);
-}
-
 void flush()
 {
  fflush(stdout);

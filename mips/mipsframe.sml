@@ -124,8 +124,8 @@ struct
 
   fun externalCall (s, args) =
     (* =============================================== TODO: external call No-op noop NOP  =============================================== *)
-    (* Tree.CALL(Tree.NAME(Temp.namedlabel s), args) *)
-    Tree.NOP ()
+    Tree.CALL(Tree.NAME(Temp.namedlabel s), args)
+    (* Tree.NOP () *)
 
   (* ost = offset *)
   fun exp (InFrame (ost), frameaddr) = Tree.MEM (Tree.BINOP (Tree.PLUS, frameaddr, Tree.CONST (ost)))

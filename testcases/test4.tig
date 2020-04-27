@@ -8,6 +8,6 @@ function nfactor(n: int): int =
 	    else n * nfactor(n-1)
 
 in
-	nfactor(7)
+	print_int (nfactor(7))
 end
 

@@ -2,6 +2,9 @@
 let
 	type  arrtype = array of int
 	var arr1:arrtype := arrtype [10] of 0
+  function printInt (a : int) = print (chr (48 + a))
 in
-  arr1
+ (arr1[1] := 3;
+  arr1[2] := 5;
+  printInt(arr1[1] + arr1[2]))
 end

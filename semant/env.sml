@@ -1,8 +1,10 @@
 functor Env (T : TRANSLATE) : ENV =
 struct
+  structure Ty = Types
+  structure S = Symbol
   type access = T.access
   type level = T.level
-  type ty = Types.ty
+  type ty = Ty.ty
 
   datatype enventry = VarEntry of {access: T.access,
                                    ty: ty}
@@ -22,13 +24,20 @@ struct
 
 
   val base_venv = 
-    (* let val _ = ()
-        (* let fun addToVenv ((s, t), table) = S.enter (table, S.symbol s, t) *)
-        (* val library_funs = [
-            ("print", FunEntry ({level=T.outermost, label=Temp.namedlabel "__print", formals=[T.STRING], result=T.UNIT})),
-
-        ]       *)
-    in  Symbol.empty
-    end *)
-    Symbol.empty
+    let fun addToVenv ((s, t), table) = Symbol.enter (table, S.symbol s, t)
+        val library_funs = [
+            ("print", FunEntry ({level=T.outermost, label=Temp.namedlabel "tig_print", formals=[Ty.STRING], result=ref Ty.UNIT})),
+            ("print_int", FunEntry ({level=T.outermost, label=Temp.namedlabel "tig_print_int", formals=[Ty.INT], result=ref Ty.UNIT})),
+            ("flush", FunEntry ({level=T.outermost, label=Temp.namedlabel "tig_flush", formals=[], result=ref Ty.UNIT})),
+            ("getchar", FunEntry ({level=T.outermost, label=Temp.namedlabel "tig_getchar", formals=[], result=ref Ty.STRING})),
+            ("ord", FunEntry ({level=T.outermost, label=Temp.namedlabel "tig_ord", formals=[Ty.STRING], result=ref Ty.INT})),
+            ("chr", FunEntry ({level=T.outermost, label=Temp.namedlabel "tig_chr", formals=[Ty.INT], result=ref Ty.STRING})),
+            ("size", FunEntry ({level=T.outermost, label=Temp.namedlabel "tig_size", formals=[Ty.STRING], result=ref Ty.INT})),
+            ("substring", FunEntry ({level=T.outermost, label=Temp.namedlabel "tig_substring", formals=[Ty.STRING, Ty.INT, Ty.INT], result=ref Ty.STRING})),
+            ("concat", FunEntry ({level=T.outermost, label=Temp.namedlabel "tig_concat", formals=[Ty.STRING, Ty.STRING], result=ref Ty.STRING})),
+            ("not", FunEntry ({level=T.outermost, label=Temp.namedlabel "tig_not", formals=[Ty.INT], result=ref Ty.INT})),
+            ("exit", FunEntry ({level=T.outermost, label=Temp.namedlabel "tig_exit", formals=[Ty.INT], result=ref Ty.UNIT}))
+        ] 
+    in  foldl addToVenv Symbol.empty library_funs
+    end
 end

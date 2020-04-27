@@ -6,6 +6,16 @@ struct
   structure S = Semant(Tr)
   structure R = RegAlloc (F)
 
+  fun readFileLines (infile : string) : string list = 
+    let val ins = TextIO.openIn infile
+        fun loop ins =
+          case TextIO.inputLine ins of
+              SOME (line) => line :: loop ins
+            | NONE => []
+    in  loop ins before TextIO.closeIn ins
+    end
+        
+
   fun emitproc out (F.PROC{body,frame}) =
         let val _ = ()
           (*val _ = print ("emit " ^ F.name frame ^ "\n")*)
@@ -46,7 +56,7 @@ struct
             (app (fn i => let val instruction = (formatFun i)
                           in  TextIO.output(out, instruction ^ "\n")
                           end) instrs); 
-            TextIO.output (out, epilog))
+            TextIO.output (out, epilog)) 
         end
     | emitproc out (F.STRING(lab,s)) = TextIO.output(out, (F.string (lab,s)) ^ "\n")
 
@@ -58,6 +68,10 @@ struct
 
    fun compile filename = 
        let val _ = Temp.start ()
+           (* Read the libraries from its file *)
+           val runtimeLibLines = readFileLines "runtimele.s"
+           val spimSyscallLib = readFileLines "sysspim.s"
+
            val absyn = Parse.parse (filename ^ ".tig")
            (* val _ = print "\nAbstract Syntax Tree: \n";
            val _ = PrintAbsyn.print (TextIO.stdOut, absyn) *)
@@ -66,7 +80,11 @@ struct
                 handle S.TypeCheckError (frags)=> (fail := true; frags)
            val openFile = if (!fail) then ()
                           else withOpenFile (filename ^ ".s")
-                                  (fn out => (TextIO.output (out, F.jumpStart); (app (emitproc out) ((*List.rev*) frags))))
+                                  (fn out => (TextIO.output (out, F.jumpStart); 
+                                             (app (emitproc out) ((*List.rev*) frags));
+                                             
+                                             (* Add the runtime library and SPIM syscall library to the end of the file *) 
+                                             (app (fn l => TextIO.output (out, l)) (runtimeLibLines @ ["\n\n\n"] @ spimSyscallLib))))
            val _ = Temp.reset ()
        in  ()
        end

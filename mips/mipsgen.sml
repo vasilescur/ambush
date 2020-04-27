@@ -257,6 +257,14 @@ struct
                                              src=[munchExp e2],
                                              dst=[r],
                                              jump=NONE}))
+
+                (* Less efficient catch-all *)
+                | munchExp (T.MEM(e1)) =
+                  result(fn r => emit(A.OPER{assem="lw   `d0, 0(`s0)",
+                                             src=[munchExp e1],
+                                             dst=[r],
+                                             jump=NONE}))
+
                                 
                 (* Binary operations *)
 
