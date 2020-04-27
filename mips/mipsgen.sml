@@ -14,10 +14,13 @@ struct
 
   fun codeGen (frame) (stm: Tree.stm) : A.instr list =
         let val ilist = ref (nil: A.instr list)
+        
             fun emit x = ilist := x :: !ilist
-            fun result (gen) = 
-              let val t = Temp.newtemp() 
-              in  gen t; 
+
+            fun result (gen) =
+              let val t = Temp.newtemp()
+                  (* val _ = print ("  result new temp: " ^ Temp.makestring t ^ "\n") *)
+              in  gen t;
                   t 
               end
 
@@ -216,7 +219,6 @@ struct
 
               | munchStm(_) = emit(A.LABEL{assem="MISSING STM",
                                            lab=Temp.newlabel ()})
-
 
                 (* Memory operations *)
 
@@ -447,12 +449,13 @@ struct
                     end
 
 
-            and munchArgs (_, nil) = nil 
+            (* Munches args to fill the argument registers before a function call *)
+            and munchArgs (_, []) = []
               | munchArgs (i, exp :: tail) =
                   let val length = List.length Frame.argregs
                   in  if i < length then
-                        let val destination = List.nth (Frame.argregs, i)
-                            val source = munchExp (exp)
+                        let val destination : Temp.temp = List.nth (Frame.argregs, i)
+                            val source : Temp.temp = munchExp (exp)
                         in  munchStm (T.MOVE (T.TEMP destination, T.TEMP source));
                             destination :: munchArgs (i + 1, tail)
                         end 

@@ -2,6 +2,7 @@ signature TEMP =
 sig
   eqtype temp
   val reset : unit -> unit
+  val start : unit -> unit
   val newtemp : unit -> temp
   val compare : temp * temp -> order
   val makestring: temp -> string

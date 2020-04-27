@@ -46,7 +46,14 @@ struct
                   let (* val _ = print "Retrieving temp from node...\n" *)
                       val node = tnode temp
                       (* val _ = print "Determining temp type...\n" *)
-                      val tempType = if (Liveness.LiveG.inDegree (node) > List.length F.registers)
+                      val degree = (Liveness.LiveG.foldSuccs' graph) 
+                                   (fn (n, count) => 
+                                      let val temp = Liveness.LiveG.nodeInfo n
+                                      in  case Temp.Map.find (initialAlloc, temp) of
+                                            NONE     => count + 1
+                                          | SOME (_) => count
+                                      end) 0 node
+                      val tempType = if (degree > (List.length F.registers))
                                      then W.HIGH
                                      else if Temp.Set.member (moveSet, temp)
                                           then W.MOVE

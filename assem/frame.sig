@@ -3,6 +3,8 @@ sig
   type frame
   type access
 
+  exception FrameFailure of string
+
   datatype frag = PROC of {body: Tree.stm, frame: frame}
                 | STRING of Temp.label * string
   

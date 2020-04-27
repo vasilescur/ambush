@@ -1,8 +1,4 @@
 let 
-
-function getchar () : string = " "
-function ord (x : string) : int = 0
-
  type any = {any : int}
  var buffer := getchar()
 

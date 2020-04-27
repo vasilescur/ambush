@@ -163,14 +163,15 @@ struct
                               val thenLabel = Temp.newlabel ()
                               val elseLabel = Temp.newlabel ()
                               val joinLabel = Temp.newlabel ()
+                              val resultTemp = T.TEMP (Temp.newtemp ())
                               val testStm = unCx test
                           in Ex (T.ESEQ (seq [testStm (thenLabel, elseLabel),
                                           T.LABEL thenLabel,
-                                          T.EXP trueExp,
+                                          T.MOVE (resultTemp, trueExp),
                                           T.JUMP (T.NAME joinLabel, [joinLabel]),
                                           T.LABEL elseLabel,
-                                          T.EXP falseExp,
-                                          T.LABEL joinLabel], T.CONST 0))
+                                          T.MOVE (resultTemp, falseExp),
+                                          T.LABEL joinLabel], resultTemp))
                           end
       | NONE => let val condExp = unEx thenExp
                     val thenLabel = Temp.newlabel ()
@@ -243,6 +244,7 @@ struct
                            F.nextFrame ({name = label, formals = []}))
             | NONTOP ({unique = _, parent = _, frame = frame'}) => frame'
         val trBody = unEx body'
+        val _ = Printtree.printtree (TextIO.stdOut, T.EXP (trBody))
         val trBody' = F.procEntryExit1(levelFrame, T.MOVE(T.TEMP F.RV, trBody))
     in  (* Append to frag list *)
         (* print "procedureEntryExit just added to fragList\n"; *)

@@ -69,7 +69,7 @@ struct
   val GP = Temp.newtemp ()
   val specialregs = [RV, FP, SP, RA]
 
-  val callersaves = [t0, t1, t2, t3, t4, t5, t6, t7, t8, t9]
+  val callersaves = (* argregs @ *) [t0, t1, t2, t3, t4, t5, t6, t7, t8, t9]
   val calleesaves = [s0, s1, s2, s3, s4, s5, s6, s7] 
 
   val jumpStart = ".text\n    j    L0\n"
@@ -139,7 +139,7 @@ struct
     let val {name, formals, numLocals, curOffset, shifts} : frame = frame'
 
         (* Print the formals for debugging *)
-        val _ = print ("Formals available in frame of function " ^ Symbol.name (name) ^ ": \n")
+        (* val _ = print ("Formals available in frame of function " ^ Symbol.name (name) ^ ": \n") *)
         val _ = map (fn fml => (let val loc = case fml of 
                                                   InFrame (n) => "frame " ^ Int.toString (n) 
                                                 | InReg (tmp) => Temp.makestring tmp
@@ -219,26 +219,39 @@ struct
     end  *)
 
   exception TooManyArguments of string
+  exception FrameFailure of string
 
   fun nextFrame ({name : Temp.label, formals : bool list}) : frame = 
     let val n = ref 0
         fun iterate ([], _, _) = [] 
-          | iterate (head :: tail, [], oset) = 
-              if head then (n := !n + 1; 
+          | iterate (head :: tail, [], oset) = raise FrameFailure ("[name = " ^ Symbol.name name ^ "] More formals than argument registers")
+              (* if head then (n := !n + 1; 
                             InFrame (oset) :: iterate (tail, [], oset + wordSize))
-              else raise TooManyArguments ("Cannot handle more than 3 formals")
-          | iterate (head :: tail, reg::regs, oset) = 
+              else raise TooManyArguments ("Cannot handle more than 3 formals") *)
+          | iterate (head :: tail, reg::regs, oset) =
               if head then
-                  (n := !n + 1; 
+                  (n := !n + 1;
                    InFrame(oset) :: iterate(tail, regs, oset + wordSize))
-              else InReg(reg) :: iterate(tail, regs, oset)
+              else let val newTemp = Temp.newtemp ()
+                   in  InReg(newTemp) :: iterate(tail, regs, oset)
+                   end
 
+        (* accesses represents where the argument values are when they come into the function *)
         val accesses : access list = iterate (false :: formals, argregs, wordSize)
 
+        (* Moves values of the argument registers into their appropriate accesses *)
         fun viewShift (ac, r) = T.MOVE (exp (ac, (T.TEMP FP)), T.TEMP r)
 
         (* Make the move instructions *)
+
+        (* val _ = (ListPair.map (fn (dst : access, src : Temp.temp) => print ("    " ^ dst ^ " <-- " ^ Temp.makestring (src) ^ "\n"))) (accesses, argregs) *)
+
         val moveInstrs = (ListPair.map viewShift) (accesses, argregs)
+
+        (* val _ = print ("Making move instructions for view shift: \n")
+        val _ = map (fn t => Printtree.printtree (TextIO.stdOut, t)) moveInstrs *)
+
+
     in  case (List.length formals) <= (List.length argregs) of
             true =>  {name=name,
                       formals=accesses,

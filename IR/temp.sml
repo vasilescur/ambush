@@ -1,4 +1,4 @@
-structure Temp :> TEMP =
+structure Temp : TEMP =
 struct
     type temp = int
     type ord_key = temp
@@ -6,9 +6,18 @@ struct
     val labelCount = ref 0
     val temps = ref 0
 
+    val labelReset = ref 0 
+    val tempReset = ref 0
+
+    fun start () =
+      let val _ = labelReset := !labelCount 
+          val _ = tempReset := !temps
+      in  ()
+      end 
+
     fun reset () = 
-        let val () = temps := 0
-            val () = labelCount := 0
+        let val _ = temps := !tempReset
+            val _ = labelCount := !labelReset
         in
             ()
         end
@@ -16,7 +25,7 @@ struct
 
     fun newtemp() = 
         let val t  = !temps 
-            val () = temps := t+1
+            val _ = temps := t+1
         in 
             t
         end

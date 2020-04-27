@@ -1,4 +1,4 @@
 .DS_Store
-testcases/*.s
+# testcases/*.s
 */.cm/*
 .cm/*

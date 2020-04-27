@@ -213,6 +213,27 @@ and currently, these conditions are unreachable.
 After type checking the entire program (which helps users find the issues within 
 their programs), the rest of the compilation process does not continue.
 
+The type checker produces helpful error messages to make debugging as easy as
+possible. A lot of the type checking error outputs are based on the outputs
+that SML gives. For example, here is the error message produced for `test22.tig`.
+
+```sml
+let 
+	type rectype = {name:string , id:int}
+	var rec1 := rectype {name="Name", id=0}
+in
+	rec1.nam := "asd"
+end
+```
+
+Error message:
+
+```
+testcases/test22.tig:7.2:Type Checking Error: Could not find field nam
+    Expected: { nam : 'a, ...}
+    Actual:   { id : int, name : string,  }
+```
+
 ## Intermediate Representation (IR)
 
 The next stage is conversion to Intermediate Representation, a format in which
