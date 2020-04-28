@@ -1,0 +1,8 @@
+let type rec = {h:int}
+    type recholder = {h:int, r:rec}
+    var record := recholder {h=3, r=rec {h=2}}
+    var h := record.h
+    var r : rec := record.r
+    var h2 := r.h
+in  (print_int (h); print_int (h2))
+end

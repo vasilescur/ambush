@@ -135,14 +135,12 @@ struct
     | opIR (left, A.GtOp, right) = Ex (T.RELOP (T.GT, unEx left, unEx right))
     | opIR (left, A.GeOp, right) = Ex (T.RELOP (T.GE, unEx left, unEx right))
 
-  (* fun stringCompare (left, right) = Ex () *)
-
   fun stringOpIR (left, A.EqOp, right) = Ex (F.externalCall ("tig_stringEqual", [unEx left, unEx right]))
     | stringOpIR (left, A.NeqOp, right) = Ex (T.RELOP (T.EQ, F.externalCall ("tig_stringEqual", [unEx left, unEx right]), T.CONST (0)))
-    | stringOpIR (left, A.LtOp, right) = Ex (T.RELOP (T.LT, F.externalCall ("stringCompare", [unEx left, unEx right]), T.CONST (0)))
-    | stringOpIR (left, A.LeOp, right) = Ex (T.RELOP (T.LE, F.externalCall ("stringCompare", [unEx left, unEx right]), T.CONST (0)))
-    | stringOpIR (left, A.GtOp, right) = Ex (T.RELOP (T.GT, F.externalCall ("stringCompare", [unEx left, unEx right]), T.CONST (0)))
-    | stringOpIR (left, A.GeOp, right) = Ex (T.RELOP (T.GE, F.externalCall ("stringCompare", [unEx left, unEx right]), T.CONST (0)))
+    | stringOpIR (left, A.LtOp, right) = Ex (T.RELOP (T.LT, F.externalCall ("tig_stringCompare", [unEx left, unEx right]), T.CONST (0)))
+    | stringOpIR (left, A.LeOp, right) = Ex (T.RELOP (T.LE, F.externalCall ("tig_stringCompare", [unEx left, unEx right]), T.CONST (0)))
+    | stringOpIR (left, A.GtOp, right) = Ex (T.RELOP (T.GT, F.externalCall ("tig_stringCompare", [unEx left, unEx right]), T.CONST (0)))
+    | stringOpIR (left, A.GeOp, right) = Ex (T.RELOP (T.GE, F.externalCall ("tig_stringCompare", [unEx left, unEx right]), T.CONST (0)))
     | stringOpIR (left, _, right) = raise TranslationFailure ("Invalid string operation")
 
   fun callIR (TOPLEVEL, calllevel, label, args) = Ex (T.CALL (T.NAME label, List.map unEx args))
@@ -230,6 +228,8 @@ struct
                                           fun setUpRecord () = head::fields(exps, 0)
                                       in Ex (T.ESEQ (seq (setUpRecord ()), T.TEMP record))
                                       end
+
+  fun fieldIR (r, index) = Ex (T.MEM (T.BINOP (T.PLUS, unEx r, T.CONST (index * F.wordSize))))
 
   fun arrayIR (sizeExp, initExp) = Ex (F.externalCall ("tig_initArray", [unEx sizeExp, unEx initExp]))
 

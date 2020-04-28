@@ -60,32 +60,54 @@ struct
         end
     | emitproc out (F.STRING(lab,s)) = TextIO.output(out, (F.string (lab,s)) ^ "\n")
 
-   fun withOpenFile fname f = 
-       let val out = TextIO.openOut fname
-       in  ((*(f TextIO.stdOut);*) (f out before TextIO.closeOut out))
-       (* handle e => (TextIO.closeOut out; raise e) *)
-       end
+  fun withOpenFile fname f = 
+    let val out = TextIO.openOut fname
+    in  ((*(f TextIO.stdOut);*) (f out before TextIO.closeOut out))
+    (* handle e => (TextIO.closeOut out; raise e) *)
+    end
 
-   fun compile filename = 
-       let val _ = Temp.start ()
-           (* Read the libraries from its file *)
-           val runtimeLibLines = readFileLines "runtimele.s"
-           val spimSyscallLib = readFileLines "sysspim.s"
+  fun compile filename = 
+    let val _ = Temp.start ()
+        (* Read the libraries from its file *)
+        val runtimeLibLines = readFileLines "runtimele.s"
+        val spimSyscallLib = readFileLines "sysspim.s"
 
-           val absyn = Parse.parse (filename ^ ".tig")
-           (* val _ = print "\nAbstract Syntax Tree: \n";
-           val _ = PrintAbsyn.print (TextIO.stdOut, absyn) *)
-           val fail = ref false
-           val frags = ((*FindEscape.prog absyn;*) S.transProg absyn)
-                handle S.TypeCheckError (frags)=> (fail := true; frags)
-           val openFile = if (!fail) then ()
-                          else withOpenFile (filename ^ ".s")
-                                  (fn out => (TextIO.output (out, F.jumpStart); 
-                                             (app (emitproc out) ((*List.rev*) frags));
-                                             
-                                             (* Add the runtime library and SPIM syscall library to the end of the file *) 
-                                             (app (fn l => TextIO.output (out, l)) (runtimeLibLines @ ["\n\n\n"] @ spimSyscallLib))))
-           val _ = Temp.reset ()
-       in  ()
-       end
+        val absyn = Parse.parse (filename)
+        (* val _ = print "\nAbstract Syntax Tree: \n";
+        val _ = PrintAbsyn.print (TextIO.stdOut, absyn) *)
+        
+        val frags = ((*FindEscape.prog absyn;*) S.transProg absyn)
+            handle e => raise e
+
+        val openFile = withOpenFile (filename ^ ".s")
+                              (fn out => (TextIO.output (out, F.jumpStart); 
+                                          (app (emitproc out) ((*List.rev*) frags));
+                                          
+                                          (* Add the runtime library and SPIM syscall library to the end of the file *) 
+                                          (app (fn l => TextIO.output (out, l)) (runtimeLibLines @ ["\n\n\n"] @ spimSyscallLib))))
+        val _ = Temp.reset ()
+    in  ()
+    end
+
+  (* Entry point of the application *)
+  fun main (sml_path_name : string, args : string list) : OS.Process.status = 
+    let val STATUS_SUCCESS = 0
+        val STATUS_FAIL = 1
+        val prog_name  = List.hd args
+        val args = List.tl args
+        val exitstatus = case args of 
+                            [] => ((print "Error: Unspecified input file.\nUsage: ambush [inputfile] or ambush --help\n");
+                                   STATUS_FAIL)
+                          | [arg1] => if arg1 = "--help"
+                                        then ((print "Usage: ambush [inputfile] or ambush --help\n");
+                                              STATUS_SUCCESS)
+                                        else (* We were given a file name-- compile it *)
+                                             (compile arg1; 
+                                              STATUS_SUCCESS)
+                          | _ => ((print "Usage: ambush [inputfile] or ambush --help\n");
+                                  STATUS_FAIL)
+            handle _ => STATUS_FAIL
+    in  exitstatus : OS.Process.status
+    end
+   
 end

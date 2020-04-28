@@ -36,6 +36,7 @@ sig
   val stringIR : string -> exp
   val letIR : exp list * exp -> exp
   val subscriptIR : exp * exp -> exp
+  val fieldIR : exp * int -> exp
 
 
   val procedureEntryExit : level * exp * Temp.label -> unit

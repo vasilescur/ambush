@@ -1,11 +1,11 @@
 .text
-    j    L0
+    j   tig_main
 .text
 # PROCEDURE tig_main
 tig_main: 
     sw   $fp, 0($sp)
     move $fp, $sp
-    addi $sp, $sp, -100
+    addi $sp, $sp, -140
 L2:
     move $v0, $a0
     sw   $ra, -4($fp)
@@ -31,7 +31,7 @@ L2:
     sw   $t9, -84($fp)
     la   $s0, L0
     move $a0, $s0
-    jal  tig_print
+    jal  tig_ord
     lw   $t9, -84($fp)
     lw   $t8, -80($fp)
     lw   $t7, -76($fp)
@@ -42,6 +42,29 @@ L2:
     lw   $t2, -56($fp)
     lw   $t1, -52($fp)
     lw   $t0, -48($fp)
+    move $s0, $v0
+    sw   $t0, -88($fp)
+    sw   $t1, -92($fp)
+    sw   $t2, -96($fp)
+    sw   $t3, -100($fp)
+    sw   $t4, -104($fp)
+    sw   $t5, -108($fp)
+    sw   $t6, -112($fp)
+    sw   $t7, -116($fp)
+    sw   $t8, -120($fp)
+    sw   $t9, -124($fp)
+    move $a0, $s0
+    jal  tig_print_int
+    lw   $t9, -124($fp)
+    lw   $t8, -120($fp)
+    lw   $t7, -116($fp)
+    lw   $t6, -112($fp)
+    lw   $t5, -108($fp)
+    lw   $t4, -104($fp)
+    lw   $t3, -100($fp)
+    lw   $t2, -96($fp)
+    lw   $t1, -92($fp)
+    lw   $t0, -88($fp)
     lw   $s7, -44($fp)
     lw   $s6, -40($fp)
     lw   $s5, -36($fp)
@@ -61,7 +84,7 @@ L1:
 # END tig_main
 
 .data
-L0: .ascii "yes"
+L0: .asciiz "e"
 
 	#.file	1 "runtime.c"
 	.option pic2
@@ -189,127 +212,147 @@ tig_allocRecord:
 	j	$ra
 .LFE2:
 	.end	tig_allocRecord
-	.align 4
-	.globl	tig_stringEqual
-	.ent	tig_stringEqual
-tig_stringEqual:
-.LFB3:
-	.frame	$fp,48,$ra		# vars= 16, regs= 2/0, args= 0, extra= 16
-	.mask	0x50000000,-8
-	.fmask	0x00000000,0
-	subu	$sp,$sp,48
-.LCFI10:
-	sd	$fp,40($sp)
-.LCFI11:
-.LCFI12:
-	move	$fp,$sp
-.LCFI13:
-	.set	noat
-	.set	at
-	sw	$a0,16($fp)
-	sw	$a1,20($fp)
-	lw	$v0,16($fp)
-	lw	$v1,20($fp)
-	bne	$v0,$v1,.L13
-	li	$v0,1			# 0x1
-	b	.L12
-.L13:
-	lw	$v0,16($fp)
-	lw	$v1,20($fp)
-	lw	$v0,0($v0)
-	lw	$v1,0($v1)
-	beq	$v0,$v1,.L14
-	move	$v0,$zero
-	b	.L12
-.L14:
-	.set	noreorder
-	nop
-	.set	reorder
-	sw	$zero,24($fp)
-.L15:
-	lw	$v0,16($fp)
-	lw	$v1,24($fp)
-	lw	$v0,0($v0)
-	slt	$v1,$v1,$v0
-	bne	$v1,$zero,.L18
-	b	.L16
-.L18:
-	lw	$v0,16($fp)
-	addu	$v1,$v0,4
-	lw	$a0,24($fp)
-	addu	$v0,$v1,$a0
-	lw	$v1,20($fp)
-	addu	$a0,$v1,4
-	lw	$v1,24($fp)
-	addu	$a0,$a0,$v1
-	lbu	$v0,0($v0)
-	lbu	$v1,0($a0)
-	beq	$v0,$v1,.L17
-	move	$v0,$zero
-	b	.L12
-.L19:
-.L17:
-	lw	$v0,24($fp)
-	addu	$v1,$v0,1
-	sw	$v1,24($fp)
-	b	.L15
-.L16:
-	li	$v0,1			# 0x1
-	b	.L12
-.L12:
-	move	$sp,$fp
-	ld	$fp,40($sp)
-	addu	$sp,$sp,48
-	j	$ra
-.LFE3:
-	.end	tig_stringEqual
 
-
-# 	.text
 # 	.align 4
-# 	.globl tig_stringCompare
-# 	.ent   tig_stringCompare
-# # Generated string compare using this online compiler: https://godbolt.org
-# tig_stringCompare:
-# 	.frame  $fp,8,$31         # vars= 0, regs= 1/0, args= 0, gp= 0
-# 	.mask   0x40000000,-4
-# 	.fmask  0x00000000,0
+# 	.globl	tig_stringEqual
+# 	.ent	tig_stringEqual
+# tig_stringEqual:
+# .LFB3:
+# 	.frame	$fp,48,$ra		# vars= 16, regs= 2/0, args= 0, extra= 16
+# 	.mask	0x50000000,-8
+# 	.fmask	0x00000000,0
+# 	subu	$sp,$sp,48
+# .LCFI10:
+# 	sd	$fp,40($sp)
+# .LCFI11:
+# .LCFI12:
+# 	move	$fp,$sp
+# .LCFI13:
+# 	.set	noat
+# 	.set	at
+# 	sw	$a0,16($fp)
+# 	sw	$a1,20($fp)
+# 	lw	$v0,16($fp)
+# 	lw	$v1,20($fp)
+# 	bne	$v0,$v1,.L13
+# 	li	$v0,1			# 0x1
+# 	b	.L12
+# .L13:
+# 	lw	$v0,16($fp)
+# 	lw	$v1,20($fp)
+# 	lw	$v0,0($v0)
+# 	lw	$v1,0($v1)
+# 	beq	$v0,$v1,.L14
+# 	move	$v0,$zero
+# 	b	.L12
+# .L14:
+# 	.set	noreorder
+# 	nop
+# 	.set	reorder
+# 	sw	$zero,24($fp)
+# .L15:
+# 	lw	$v0,16($fp)
+# 	lw	$v1,24($fp)
+# 	lw	$v0,0($v0)
+# 	slt	$v1,$v1,$v0
+# 	bne	$v1,$zero,.L18
+# 	b	.L16
+# .L18:
+# 	lw	$v0,16($fp)
+# 	addu	$v1,$v0,4
+# 	lw	$a0,24($fp)
+# 	addu	$v0,$v1,$a0
+# 	lw	$v1,20($fp)
+# 	addu	$a0,$v1,4
+# 	lw	$v1,24($fp)
+# 	addu	$a0,$a0,$v1
+# 	lbu	$v0,0($v0)
+# 	lbu	$v1,0($a0)
+# 	beq	$v0,$v1,.L17
+# 	move	$v0,$zero
+# 	b	.L12
+# .L19:
+# .L17:
+# 	lw	$v0,24($fp)
+# 	addu	$v1,$v0,1
+# 	sw	$v1,24($fp)
+# 	b	.L15
+# .L16:
+# 	li	$v0,1			# 0x1
+# 	b	.L12
+# .L12:
+# 	move	$sp,$fp
+# 	ld	$fp,40($sp)
+# 	addu	$sp,$sp,48
+# 	j	$ra
+# .LFE3:
+# 	.end	tig_stringEqual
+
+	.text
+	.align 4
+	.globl tig_stringEqual
+	.ent 	 tig_stringEqual
+tig_stringEqual:
+
+	addi    $sp, $sp, -8
+	sw      $fp, 0($sp)
+	sw      $ra, 4($sp)
+
+	jal     tig_stringCompare
+	seq     $v0 $v0 $0
+
+	lw      $ra, 4($sp)
+	lw      $fp, 0($sp)
+	addi    $sp, $sp, 8
+	j       $ra
+	.end 	tig_stringEqual
+
+
+	.text
+	.align 4
+	.globl tig_stringCompare
+	.ent   tig_stringCompare
+# Generated string compare using this online compiler: https://godbolt.org
+tig_stringCompare:
+	.frame  $fp,8,$31         # vars= 0, regs= 1/0, args= 0, gp= 0
+	.mask   0x40000000,-4
+	.fmask  0x00000000,0
 	
-# 	addiu   $sp,$sp,-8
-# 	sw      $fp,4($sp)
-# 	move    $fp,$sp
-# 	move    $2,$4
-# 	move    $3,$5
-# 	b       $tig_sc_L2
+	addiu   $sp,$sp,-8
+	sw      $fp,4($sp)
+	move    $fp,$sp
+	move    $2,$4
+	move    $3,$5
+	b       tig_sc_L2
 
-# .tig_sc_L4:
-# 	move    $4,$2
-# 	addiu   $2,$4,1
-# 	lb      $4,0($4)
-# 	bne     $4,$0,$tig_sc_L2
+tig_sc_L4:
+	move    $4,$2
+	addiu   $2,$4,1
+	lb      $4,0($4)
+	bne     $4,$0, tig_sc_L2
 
-# 	move    $2,$0
-# 	b       $tig_sc_L3
+	move    $2,$0
+	b       tig_sc_L3
 
-# .tig_sc_L2:
-# 	lb      $5,0($2)
-# 	move    $4,$3
-# 	addiu   $3,$4,1
-# 	lb      $4,0($4)
-# 	beq     $5,$4,$tig_sc_L4
+tig_sc_L2:
+	lb      $5,0($2)
+	move    $4,$3
+	addiu   $3,$4,1
+	lb      $4,0($4)
+	beq     $5,$4, tig_sc_L4
 
-# 	lbu     $2,0($2)
-# 	move    $4,$2
-# 	addiu   $2,$3,-1
-# 	lbu     $2,0($2)
-# 	subu    $2,$4,$2
-# .tig_sc_L3:
-# 	move    $sp,$fp
-# 	lw      $fp,4($sp)
-# 	addiu   $sp,$sp,8
-# 	j       $31
+	lbu     $2,0($2)
+	move    $4,$2
+	addiu   $2,$3,-1
+	lbu     $2,0($2)
+	subu    $2,$4,$2
+tig_sc_L3:
+	move    $sp,$fp
+	lw      $fp,4($sp)
+	addiu   $sp,$sp,8
+	j       $31
 
-# 	.end	tig_stringCompare
+	.end	tig_stringCompare
 
 
 # CUSTOM FUNCTION: prints an integer
@@ -331,61 +374,80 @@ tig_print_int:
 	.end	tig_print_int 
 
 
-
+# CUSTOM FUNCTION: prints an string
 	.align 4
-	.globl	tig_print
-	.ent	tig_print
+	.globl 	tig_print
+	.ent 	tig_print
 tig_print:
-.LFB4:
-	.frame	$fp,64,$ra		# vars= 16, regs= 3/0, args= 0, extra= 16
-	.mask	0xd0000000,-16
-	.fmask	0x00000000,0
-	subu	$sp,$sp,64
-.LCFI14:
-	sd	$ra,48($sp)
-.LCFI15:
-	sd	$fp,40($sp)
-.LCFI16:
-.LCFI17:
-	move	$fp,$sp
-.LCFI18:
-	.set	noat
-	.set	at
-	sw	$a0,16($fp)
-	lw	$v0,16($fp)
-	addu	$v1,$v0,4
-	sw	$v1,24($fp)
-	sw	$zero,20($fp)
-.L21:
-	lw	$v0,16($fp)
-	lw	$v1,20($fp)
-	lw	$v0,0($v0)
-	slt	$v1,$v1,$v0
-	bne	$v1,$zero,.L24
-	b	.L22
-.L24:
-	lw	$v0,24($fp)
-	lbu	$v1,0($v0)
-	move	$a0,$v1
-	la	$t9,putchar
-	jal	$ra,$t9
-.L23:
-	lw	$v0,20($fp)
-	addu	$v1,$v0,1
-	sw	$v1,20($fp)
-	lw	$v0,24($fp)
-	addu	$v1,$v0,1
-	sw	$v1,24($fp)
-	b	.L21
-.L22:
-.L20:
-	move	$sp,$fp
-	ld	$ra,48($sp)
-	ld	$fp,40($sp)
-	addu	$sp,$sp,64
-	j	$ra
-.LFE4:
-	.end	tig_print
+	addi 	$sp, $sp, -4
+	sw		$v0, 0($sp)
+
+	addi  	$v0, $0, 4
+	syscall
+
+	lw 		$v0, 0($sp)
+	addi 	$sp, $sp, 4
+
+	j		$ra
+	.end	tig_print 
+
+
+# 	.align 4
+# 	.globl	tig_print
+# 	.ent	tig_print
+# tig_print:
+# .LFB4:
+# 	.frame	$fp,64,$ra		# vars= 16, regs= 3/0, args= 0, extra= 16
+# 	.mask	0xd0000000,-16
+# 	.fmask	0x00000000,0
+# 	subu	$sp,$sp,64
+# .LCFI14:
+# 	sd	$ra,48($sp)
+# .LCFI15:
+# 	sd	$fp,40($sp)
+# .LCFI16:
+# .LCFI17:
+# 	move	$fp,$sp
+# .LCFI18:
+# 	.set	noat
+# 	.set	at
+# 	sw	$a0,16($fp)
+# 	lw	$v0,16($fp)
+# 	addu	$v1,$v0,4
+# 	sw	$v1,24($fp)
+# 	sw	$zero,20($fp)
+# .L21:
+# 	lw	$v0,16($fp)
+# 	lw	$v1,20($fp)
+# 	lw	$v0,0($v0)
+# 	slt	$v1,$v1,$v0
+# 	bne	$v1,$zero,.L24
+# 	b	.L22
+# .L24:
+# 	lw	$v0,24($fp)
+# 	lbu	$v1,0($v0)
+# 	move	$a0,$v1
+# 	la	$t9,putchar
+# 	jal	$ra,$t9
+# .L23:
+# 	lw	$v0,20($fp)
+# 	addu	$v1,$v0,1
+# 	sw	$v1,20($fp)
+# 	lw	$v0,24($fp)
+# 	addu	$v1,$v0,1
+# 	sw	$v1,24($fp)
+# 	b	.L21
+# .L22:
+# .L20:
+# 	move	$sp,$fp
+# 	ld	$ra,48($sp)
+# 	ld	$fp,40($sp)
+# 	addu	$sp,$sp,64
+# 	j	$ra
+# .LFE4:
+# 	.end	tig_print
+
+
 	.globl	consts
 	.data
 	.align 4
@@ -693,127 +755,174 @@ tig_substring:
 	j	$ra
 .LFE9:
 	.end	tig_substring
-	.align 4
-	.globl	tig_concat
-	.ent	tig_concat
+
+	.align  4
+	.globl  tig_concat 
+	.ent    tig_concat 
 tig_concat:
-.LFB10:
-	.frame	$fp,80,$ra		# vars= 32, regs= 3/0, args= 0, extra= 16
-	.mask	0xd0000000,-16
-	.fmask	0x00000000,0
-	subu	$sp,$sp,80
-.LCFI42:
-	sd	$ra,64($sp)
-.LCFI43:
-	sd	$fp,56($sp)
-.LCFI44:
-.LCFI45:
-	move	$fp,$sp
-.LCFI46:
-	.set	noat
-	.set	at
-	sw	$a0,16($fp)
-	sw	$a1,20($fp)
-	lw	$v0,16($fp)
-	lw	$v1,0($v0)
-	bne	$v1,$zero,.L46
-	lw	$v1,20($fp)
-	move	$v0,$v1
-	b	.L45
-	b	.L47
-.L46:
-	lw	$v0,20($fp)
-	lw	$v1,0($v0)
-	bne	$v1,$zero,.L48
-	lw	$v1,16($fp)
-	move	$v0,$v1
-	b	.L45
-	b	.L47
-.L48:
-	lw	$v0,16($fp)
-	lw	$v1,20($fp)
-	lw	$v0,0($v0)
-	lw	$v1,0($v1)
-	addu	$v0,$v0,$v1
-	sw	$v0,28($fp)
-	lw	$v1,28($fp)
-	addu	$v0,$v1,4
-	move	$a0,$v0
-	la	$t9,malloc
-	jal	$ra,$t9
-	sw	$v0,32($fp)
-	lw	$v0,32($fp)
-	lw	$v1,28($fp)
-	sw	$v1,0($v0)
-	sw	$zero,24($fp)
-.L50:
-	lw	$v0,16($fp)
-	lw	$v1,24($fp)
-	lw	$v0,0($v0)
-	slt	$v1,$v1,$v0
-	bne	$v1,$zero,.L53
-	b	.L51
-.L53:
-	lw	$v0,32($fp)
-	addu	$v1,$v0,4
-	lw	$a0,24($fp)
-	addu	$v0,$v1,$a0
-	lw	$v1,16($fp)
-	addu	$a0,$v1,4
-	lw	$v1,24($fp)
-	addu	$a0,$a0,$v1
-	lbu	$v1,0($a0)
-	sb	$v1,0($v0)
-.L52:
-	lw	$v0,24($fp)
-	addu	$v1,$v0,1
-	sw	$v1,24($fp)
-	b	.L50
-.L51:
-	.set	noreorder
-	nop
-	.set	reorder
-	sw	$zero,24($fp)
-.L54:
-	lw	$v0,20($fp)
-	lw	$v1,24($fp)
-	lw	$v0,0($v0)
-	slt	$v1,$v1,$v0
-	bne	$v1,$zero,.L57
-	b	.L55
-.L57:
-	lw	$v0,32($fp)
-	lw	$v1,16($fp)
-	lw	$a0,24($fp)
-	lw	$a1,0($v1)
-	addu	$v1,$a0,$a1
-	addu	$a0,$v0,4
-	addu	$v0,$a0,$v1
-	lw	$v1,20($fp)
-	addu	$a0,$v1,4
-	lw	$v1,24($fp)
-	addu	$a0,$a0,$v1
-	lbu	$v1,0($a0)
-	sb	$v1,0($v0)
-.L56:
-	lw	$v0,24($fp)
-	addu	$v1,$v0,1
-	sw	$v1,24($fp)
-	b	.L54
-.L55:
-	lw	$v1,32($fp)
-	move	$v0,$v1
-	b	.L45
-.L49:
-.L47:
-.L45:
-	move	$sp,$fp
-	ld	$ra,64($sp)
-	ld	$fp,56($sp)
-	addu	$sp,$sp,80
-	j	$ra
-.LFE10:
-	.end	tig_concat
+	lw    	$t0,($a0)
+	lw    	$t1,($a1)
+	beqz  	$t0,Lrunt50
+	beqz  	$t1,Lrunt51
+	addiu 	$t2,$a0,4
+	addiu 	$t3,$a1,4
+	add   	$t4,$t0,$t1
+	addiu 	$a0,$t4,4
+	li    	$v0,9
+	syscall
+	addiu 	$t5,$v0,4
+	sw    	$t4,($v0)
+Lrunt52:
+	lbu   	$a0,($t2)
+	sb    	$a0,($t5)
+	addiu 	$t2,1
+	addiu 	$t5,1
+	addiu 	$t0,-1
+	bgtz  	$t0,Lrunt52
+Lrunt53:
+	lbu   	$a0,($t4)
+	sb    	$a0,($t5)
+	addiu 	$t4,1
+	addiu 	$t5,1
+	addiu 	$t2,-1
+	bgtz  	$t2,Lrunt52
+	j     	$ra
+Lrunt50:
+	move  	$v0,$a1
+	j     	$ra
+Lrunt51:
+	move  	$v0,$a0
+	j     	$ra
+	
+	.end tig_concat
+
+	
+
+
+# 	.align 4
+# 	.globl	tig_concat
+# 	.ent	tig_concat
+# tig_concat:
+# .LFB10:
+# 	.frame	$fp,80,$ra		# vars= 32, regs= 3/0, args= 0, extra= 16
+# 	.mask	0xd0000000,-16
+# 	.fmask	0x00000000,0
+# 	subu	$sp,$sp,80
+# .LCFI42:
+# 	sd	$ra,64($sp)
+# .LCFI43:
+# 	sd	$fp,56($sp)
+# .LCFI44:
+# .LCFI45:
+# 	move	$fp,$sp
+# .LCFI46:
+# 	.set	noat
+# 	.set	at
+# 	sw	$a0,16($fp)
+# 	sw	$a1,20($fp)
+# 	lw	$v0,16($fp)
+# 	lw	$v1,0($v0)
+# 	bne	$v1,$zero,.L46
+# 	lw	$v1,20($fp)
+# 	move	$v0,$v1
+# 	b	.L45
+# 	b	.L47
+# .L46:
+# 	lw	$v0,20($fp)
+# 	lw	$v1,0($v0)
+# 	bne	$v1,$zero,.L48
+# 	lw	$v1,16($fp)
+# 	move	$v0,$v1
+# 	b	.L45
+# 	b	.L47
+# .L48:
+# 	lw	$v0,16($fp)
+# 	lw	$v1,20($fp)
+# 	lw	$v0,0($v0)
+# 	lw	$v1,0($v1)
+# 	addu	$v0,$v0,$v1
+# 	sw	$v0,28($fp)
+# 	lw	$v1,28($fp)
+# 	addu	$v0,$v1,4
+# 	move	$a0,$v0
+# 	la	$t9,malloc
+# 	jal	$ra,$t9
+# 	sw	$v0,32($fp)
+# 	lw	$v0,32($fp)
+# 	lw	$v1,28($fp)
+# 	sw	$v1,0($v0)
+# 	sw	$zero,24($fp)
+# .L50:
+# 	lw	$v0,16($fp)
+# 	lw	$v1,24($fp)
+# 	lw	$v0,0($v0)
+# 	slt	$v1,$v1,$v0
+# 	bne	$v1,$zero,.L53
+# 	b	.L51
+# .L53:
+# 	lw	$v0,32($fp)
+# 	addu	$v1,$v0,4
+# 	lw	$a0,24($fp)
+# 	addu	$v0,$v1,$a0
+# 	lw	$v1,16($fp)
+# 	addu	$a0,$v1,4
+# 	lw	$v1,24($fp)
+# 	addu	$a0,$a0,$v1
+# 	lbu	$v1,0($a0)
+# 	sb	$v1,0($v0)
+# .L52:
+# 	lw	$v0,24($fp)
+# 	addu	$v1,$v0,1
+# 	sw	$v1,24($fp)
+# 	b	.L50
+# .L51:
+# 	.set	noreorder
+# 	nop
+# 	.set	reorder
+# 	sw	$zero,24($fp)
+# .L54:
+# 	lw	$v0,20($fp)
+# 	lw	$v1,24($fp)
+# 	lw	$v0,0($v0)
+# 	slt	$v1,$v1,$v0
+# 	bne	$v1,$zero,.L57
+# 	b	.L55
+# .L57:
+# 	lw	$v0,32($fp)
+# 	lw	$v1,16($fp)
+# 	lw	$a0,24($fp)
+# 	lw	$a1,0($v1)
+# 	addu	$v1,$a0,$a1
+# 	addu	$a0,$v0,4
+# 	addu	$v0,$a0,$v1
+# 	lw	$v1,20($fp)
+# 	addu	$a0,$v1,4
+# 	lw	$v1,24($fp)
+# 	addu	$a0,$a0,$v1
+# 	lbu	$v1,0($a0)
+# 	sb	$v1,0($v0)
+# .L56:
+# 	lw	$v0,24($fp)
+# 	addu	$v1,$v0,1
+# 	sw	$v1,24($fp)
+# 	b	.L54
+# .L55:
+# 	lw	$v1,32($fp)
+# 	move	$v0,$v1
+# 	b	.L45
+# .L49:
+# .L47:
+# .L45:
+# 	move	$sp,$fp
+# 	ld	$ra,64($sp)
+# 	ld	$fp,56($sp)
+# 	addu	$sp,$sp,80
+# 	j	$ra
+# .LFE10:
+# 	.end	tig_concat
+
+
+
 	.align 4
 	.globl	tig_not
 	.ent	tig_not

@@ -21,6 +21,44 @@ Diego. Archived from the original on July 4, 2013.</sub>
 
 ### Usage Instructions
 
+#### Using `make` and packaged executable
+
+To build:
+
+```bash
+make
+```
+
+To use the compiler:
+
+```
+./ambush [tiger file]
+```
+
+This will place the output file in the same directory as the source file, with
+the extension `.s` appended (for example `test1.tig` becomes `test1.tig.s`).
+
+To run the resulting assembly file using SPIM:
+
+```
+spim -file [assembly file]
+```
+
+To perform this whole process at once, use the `test.sh` script. For 
+example, to build the compiler, compile test 51, and run the result using SPIM, 
+just execute:
+
+```bash
+tc=test51.tig ./test.sh
+```
+
+For more information, check the `Makefile`. 
+
+**Note: This has only been tested on MacOS. If using Linux, Windows, or other OS,
+please build the project manually using `sml` then `CM.make "sources.cm"`. **
+
+#### Manually building and testing using REPL
+
 To test the compiler, open a terminal in the main folder and run:
 
 ```bash
@@ -30,33 +68,9 @@ sml run.sml
 In the resulting SML REPL, execute
 
 ```sml
-runTest n;
+Main.compile "testcases/myProgram.tig";
 ```
 
-To run the test case with the number `n`. To compile an arbitrary Tiger 
-program, instead execute
-
-```sml
-Main.compile "testcases/myProgram";
-```
-
-(**NOTE:** Without the `.tig` extension)
-
-#### Old Instructions: 
-
-To use the lexer, first open an `sml` REPL in the root folder of this 
-repository. Then, run the following command to compile the project:
-
-```sml
-CM.make "sources.cm";
-```
-
-In order to test the parser, use the following command, where `myFile.tig` is 
-a relative path to the Tiger input source file:
-
-```sml
-Parse.parse "myFile.tig";
-```
 
 ### Project Structure and Files
 
@@ -84,6 +98,10 @@ Parse.parse "myFile.tig";
 - `tiger.grm.desc` is an auto-generated file from ML-Yacc
 - `tiger.grm.sig` contains auto-generated code from ML-Yacc
 - `tiger.grm.sml` contains the auto-generated parser by ML-Yacc
+
+```
+TODO: Finish this description/list
+```
 
 
 ## Lexer
@@ -403,6 +421,22 @@ L4:
 # END L0
 ```
 
+## Putting it All Together
+
+To finish, we added some miscellaneous fixes throughout the project.
+
+Functions now get their arguments/formals from the right `access`es, and follow
+proper calling conventions for saving and restoring registers.
+
+We also (fixed and then) added the Tiger runtime library as provided by Professor
+Hilton, and augmented it with a few of our own functions, such as `print_int`, 
+which use MIPS syscalls to easily accomplish what would otherwise have been complicated
+features to implement in plain Tiger.
+
+We also revamped the project's build and testing system by switching to `make`
+and `ml-build` to package a heap snapshot of the SMLofNJ environment for ease
+of use.
+
 
 ## Extra Credit Features
 
@@ -418,7 +452,7 @@ No guarantees are made that the `musical` branch will be maintained or updated
 past the state that it was as of 2020-02-27 at 12:15 PM. As of now, it should 
 not be considered part of our official submission.
 
-## Future Compiler Features (Extra Credit)
+## Future Possible Compiler Features (Extra Credit)
 
  - [ ] SML Formatter
     - [ ] Tiger formatter

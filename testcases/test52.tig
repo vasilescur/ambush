@@ -1,0 +1,6 @@
+let 
+    type list = {h: int, t: list}
+    var ints := list {h=3,t= list {h=1,t=nil}}
+    function print_list (l : list) = (print_int(l.h); if (l.t <> nil) then print_list (l.t))
+in  print_list (ints)
+end

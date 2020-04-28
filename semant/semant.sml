@@ -188,45 +188,6 @@ struct
             end
         end 
 
-
-              (* let fun paramToFormal ({name, escape, typ, pos}, formals) = 
-                        let val optType = S.look (tenv, typ)
-                            val formal = case optType of
-                                            NONE => T.UNIT
-                                          | SOME (formalType) => formalType
-                        in formal::formals
-                        end
-                  fun addParam ({name, escape, typ, pos}, {tenv, venv}) = 
-                        let val paramType = findType (typ, tenv)
-                            val newVenv = S.enter (venv, name, E.VarEntry {ty=paramType, access=R.allocateLocal level (!escape)})
-                        in {tenv=tenv, venv=newVenv}
-                        end
-                  val formals = (List.foldl paramToFormal [] params)
-                  val newVenv = #venv (List.foldl addParam {tenv=tenv, venv=venv} params)
-                  val bodyExpty = transExp (level, breakLabel, newVenv, tenv) body
-                  val newVenv = case S.look (venv, name) of 
-                            NONE => venv
-                          | SOME(E.FunEntry {level=level', label=label', formals=formals', result=result'}) => 
-                                  (R.procedureEntryExit (level', #exp bodyExpty, label'); 
-                                    result' := (#ty bodyExpty);
-                                    venv)
-                          | SOME(_) => raise TypeCheckFailure "Found variable name when looking for function signature"
-              in case result of 
-                  NONE => {tenv=tenv, venv=newVenv}
-                | SOME (resultSym, resultPos) => (checkTypesEq (#ty bodyExpty, findType (resultSym, tenv), resultPos, "Function return type does not match body type check"); {tenv=tenv, venv=venv})
-                (* Need procedureEntryExit call? *)
-              end *)
-            
-            (* fun transFunDec' ({name, params, result, body, pos}, {tenv, venv}) =
-              let val SOME (E.FunEntry {result, level})
-              in  
-              end  *)
-              
-            (* val newVenv = List.foldl addFuncSig venv functions *)
-            (* val funDecs = (List.foldl transFunDec {tenv=tenv, venv=newVenv} functions) *)
-        (* in {exps= [], tenv=tenv, venv= #venv funDecs}
-        end *)
-
     and transExp(level, breakLabel, venv, tenv) = 
     let val env : env = {venv = venv, tenv = tenv}
         fun trexp (A.IntExp (int)) = {exp=(R.intIR int), ty=T.INT}
@@ -375,7 +336,7 @@ struct
                             | T.NIL => (case actual_ty (tyRight, pos) of
                                         r as T.RECORD (_, _) => {exp=R.opIR (expLeft, oper, expRight), ty=r}
                                       | _ => raise TypeCheckFailure ("Fatal: Nil type should not be type checked properly and get to this point"))
-                            | _ => raise TypeCheckFailure ("Fatal: Any other type should not have reached this point")
+                            | ty => (print ("Found type " ^ type_str ty); raise TypeCheckFailure ("Fatal: Any other type should not have reached this point"))
                         else let val errMsg = "Operand types do not match operator " ^ (P.opname oper) ^ "\n"
                                        ^ "    Actual: ( " ^ (type_str tyLeft) ^ " * " ^ (type_str tyRight) ^ " )"
                                  val e = err pos errMsg
@@ -418,20 +379,28 @@ struct
                                                    ty = actual_ty (ty, pos)}
               | SOME (_) => (err pos "expected variable, got function"; err_result)
               | NONE => (err pos ("unknown variable: " ^ S.name id); err_result))
-          | trvar (A.FieldVar (v, id, pos)) = 
-              let val {exp, ty} = trvar v
-              in  case ty of
+          | trvar (A.FieldVar (r, id, pos)) = 
+              let val {exp=recExp, ty=recTy} = trvar r
+                  val found = ref false
+              in  case recTy of
                     T.RECORD (fieldList, _) =>
-                        let 
-                        in (case (List.find (fn x => (#1 x) = id) fieldList) of
-                                                  NONE => let val errMsg = "Could not find field " ^ S.name id ^ "\n"
-                                                                    ^ "    Expected: " ^ "{ " ^ S.name id ^ " : 'a, ...}\n"
-                                                                    ^ "    Actual:   " ^ type_str ty
-                                                          in (err pos errMsg;
-                                                              err_result)
-                                                           end
-                                                | SOME (retValue) => {exp = R.unfinished,
-                                                                      ty = actual_ty (#2retValue, pos)})
+                        let val dex = case (List.find (fn field => ((#1 field) = id)) fieldList) of
+                                  NONE     => NONE
+                                | SOME (retValue) => SOME (retValue, foldr (fn (field, counter) => 
+                                                                                if ((#1 field) = id)
+                                                                                then (found := true; counter)
+                                                                                else if !found then counter
+                                                                                               else counter + 1)
+                                                                     0 fieldList)
+                        in (case dex of
+                              NONE => let val errMsg = "Could not find field " ^ S.name id ^ "\n"
+                                                     ^ "    Expected: " ^ "{ " ^ S.name id ^ " : 'a, ...}\n"
+                                                     ^ "    Actual:   " ^ type_str recTy
+                                      in (err pos errMsg;
+                                          err_result)
+                                      end
+                            | SOME (retValue, index) => {exp = R.fieldIR (recExp, index),
+                                                  ty = actual_ty (#2retValue, pos)})
                         end
                    | t => (type_err (T.RECORD ([], ref ()), t, "Field access requires record type", pos); err_result)
               end

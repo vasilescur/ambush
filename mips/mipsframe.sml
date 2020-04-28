@@ -72,7 +72,7 @@ struct
   val callersaves = (* argregs @ *) [t0, t1, t2, t3, t4, t5, t6, t7, t8, t9]
   val calleesaves = [s0, s1, s2, s3, s4, s5, s6, s7] 
 
-  val jumpStart = ".text\n    j    L0\n"
+  val jumpStart = ".text\n    j   tig_main\n"
 
   (* Categories of registers *)
 
@@ -198,7 +198,7 @@ struct
 
   
   fun string (label, str) = 
-    (".data\n" ^ Symbol.name label ^ ": .asciiz \"" ^ str ^ "\"\n")
+    (".data\n    .align 4\n" ^ Symbol.name label ^ ": .asciiz \"" ^ str ^ "\"\n")
 
 
 
