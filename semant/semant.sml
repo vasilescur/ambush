@@ -57,6 +57,7 @@ struct
                                     NONE => (err pos ("unknown type " ^ S.name sym); T.UNIT)
                                   | SOME (ty) => actual_ty (ty, pos))
       | T.ARRAY (ty, unique) => T.ARRAY(actual_ty (ty, pos), unique)
+      | T.RECORD (fields, unique) => T.RECORD(map (fn ((sym, ty)) => (sym, actual_ty (ty, pos))) fields, unique)
       | _ => ty
 
   (* Check if an expression is an integer *)
@@ -334,8 +335,14 @@ struct
                             | T.RECORD (_, _) => {exp=R.opIR (expLeft, oper, expRight), ty=T.INT}
                             | T.ARRAY (_, _) => {exp=R.opIR (expLeft, oper, expRight), ty=T.INT}
                             | T.NIL => (case actual_ty (tyRight, pos) of
-                                        r as T.RECORD (_, _) => {exp=R.opIR (expLeft, oper, expRight), ty=r}
+                                        r as T.RECORD (_, _) => {exp=R.opIR (expLeft, oper, expRight), ty=T.INT}
+                                      | T.NIL => {exp=R.intIR(1), ty=T.INT}
+                                      | T.UNIT => {exp=R.opIR (expLeft, oper, expRight), ty=T.INT}
                                       | _ => raise TypeCheckFailure ("Fatal: Nil type should not be type checked properly and get to this point"))
+                            | T.UNIT => (case actual_ty (tyRight, pos) of
+                                        r as T.RECORD (_, _) => {exp=R.opIR (expLeft, oper, expRight), ty=T.INT}
+                                      | T.NIL => {exp=R.opIR (expLeft, oper, expRight), ty=T.INT}
+                                      | ty => (print (type_str ty); raise TypeCheckFailure ("Fatal: Nil type should not be type checked properly and get to this point")))
                             | ty => (print ("Found type " ^ type_str ty); raise TypeCheckFailure ("Fatal: Any other type should not have reached this point"))
                         else let val errMsg = "Operand types do not match operator " ^ (P.opname oper) ^ "\n"
                                        ^ "    Actual: ( " ^ (type_str tyLeft) ^ " * " ^ (type_str tyRight) ^ " )"
